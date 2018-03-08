@@ -52,14 +52,20 @@ if __name__ == '__main__':
     """Do the thing."""
     t0 = time()
 
-    Parallel(n_jobs=-1)(delayed(computeAndSavePSD)(SUBJECT_LIST,
-                                                   state,
-                                                   freq=freq,
-                                                   window=WINDOW,
-                                                   overlap=OVERLAP,
-                                                   fmin=FREQ_DICT[freq][0],
-                                                   fmax=FREQ_DICT[freq][1],
-                                                   fs=SF)
-                        for freq in FREQ_DICT
-                        for state in STATE_LIST)
+    #Parallel(n_jobs=-1)(delayed(computeAndSavePSD)(SUBJECT_LIST,
+    #                                               state,
+    #                                               freq=freq,
+    #                                               window=WINDOW,
+    #                                               overlap=OVERLAP,
+    #                                               fmin=FREQ_DICT[freq][0],
+    #                                               fmax=FREQ_DICT[freq][1],
+    #                                               fs=SF)
+    #                    for freq in FREQ_DICT
+    #                    for state in STATE_LIST)
+    for state in STATE_LIST:
+        for freq in FREQ_DICT:
+            computeAndSavePSD(SUBJECT_LIST, state, freq, WINDOW, OVERLAP,
+                              fmin=FREQ_DICT[freq][0]
+                              fmax=FREQ_DICT[freq][1]
+                              fs=SF)
     print('total time lapsed : %s' % elapsed_time(t0, time()))
