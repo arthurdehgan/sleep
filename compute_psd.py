@@ -11,12 +11,10 @@ import numpy as np
 from path import Path as path
 from joblib import Parallel, delayed
 from params import DATA_PATH, SAVE_PATH, SUBJECT_LIST, FREQ_DICT, STATE_LIST,\
-                   SF
+                   SF, WINDOW, OVERLAP, CHANNEL_NAMES
 
 
 SAVE_PATH += 'psd'
-WINDOW = 1000  # windows for computation of PSD
-OVERLAP = 0  # overlap for computation of PSD (0 = no overlap)
 
 
 def computeAndSavePSD(SUBJECT_LIST, state, freq, window, overlap, fmin, fmax,
@@ -25,10 +23,11 @@ def computeAndSavePSD(SUBJECT_LIST, state, freq, window, overlap, fmin, fmax,
     N_ELEC = 19 if elec is None else len(elec)
     print(state, freq, 'bande {}: [{}-{}]Hz'.format(freq, fmin, fmax))
     for elec in range(N_ELEC):  # pour chaque elec
+        channel_name = CHANNEL_NAMES(elec)
         file_path = path(SAVE_PATH /
                          'PSD_%s_%s_%i_%i_%.2f.mat' %
                          # 'PSD_EOG_sleepState_%s_%s_%i_%i_%.2f.mat' %
-                         (state, freq, elec, window, overlap))
+                         (state, freq, channel_name, window, overlap))
         if not file_path.isfile():
             psds = []
             for sub in SUBJECT_LIST:  # pour chaque sujet
@@ -53,7 +52,7 @@ if __name__ == '__main__':
     """Do the thing."""
     t0 = time()
 
-    Parallel(n_jobs=-2)(delayed(computeAndSavePSD)(SUBJECT_LIST,
+    Parallel(n_jobs=-1)(delayed(computeAndSavePSD)(SUBJECT_LIST,
                                                    state,
                                                    freq=freq,
                                                    window=WINDOW,
