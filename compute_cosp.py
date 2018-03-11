@@ -13,7 +13,7 @@ from utils import elapsed_time, load_samples
 from params import DATA_PATH, SAVE_PATH, SUBJECT_LIST, \
                    FREQ_DICT, STATE_LIST, SF, WINDOW, OVERLAP
 
-SAVE_PATH += 'crosspectre/'
+SAVE_PATH = SAVE_PATH / 'crosspectre/'
 
 
 def combine_subjects(state, freq, window, overlap):
@@ -60,7 +60,7 @@ def compute_cosp(state, freq, window, overlap):
 
 if __name__ == '__main__':
     T_START = time()
-    Parallel(n_jobs=-2)(delayed(compute_cosp)(
+    Parallel(n_jobs=-1)(delayed(compute_cosp)(
         state, freq, WINDOW, OVERLAP)
                         for state in STATE_LIST
                         for freq in FREQ_DICT)
