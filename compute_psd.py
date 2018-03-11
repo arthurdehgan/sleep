@@ -23,7 +23,7 @@ def computeAndSavePSD(SUBJECT_LIST, state, freq, window, overlap, fmin, fmax,
     N_ELEC = 19 if elec is None else len(elec)
     print(state, freq, 'bande {}: [{}-{}]Hz'.format(freq, fmin, fmax))
     for elec in range(N_ELEC):  # pour chaque elec
-        channel_name = CHANNEL_NAMES(elec)
+        channel_name = CHANNEL_NAMES[elec]
         file_path = path(SAVE_PATH /
                          'PSD_%s_%s_%i_%i_%.2f.mat' %
                          # 'PSD_EOG_sleepState_%s_%s_%i_%i_%.2f.mat' %
