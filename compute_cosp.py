@@ -19,6 +19,7 @@ SAVE_PATH = SAVE_PATH / 'crosspectre/'
 def combine_subjects(state, freq, window, overlap):
     """Combines crosspectrum matrices from subjects into one."""
     dat, load_list = [], []
+    print(state, freq)
     for sub in SUBJECT_LIST:
         # file_path = path(SAVE_PATH / 'im_cosp_s{}_{}_{}_{}_{:.2f}.mat'.format(
         file_path = path(SAVE_PATH / 'cosp_s{}_{}_{}_{}_{:.2f}.mat'.format(
@@ -64,6 +65,7 @@ if __name__ == '__main__':
         state, freq, WINDOW, OVERLAP)
                         for state in STATE_LIST
                         for freq in FREQ_DICT)
+    print('combining subjects data')
     Parallel(n_jobs=-1)(delayed(combine_subjects)(
         state, freq, WINDOW, OVERLAP)
                         for state in STATE_LIST

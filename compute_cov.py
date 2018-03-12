@@ -1,37 +1,61 @@
-"""Computes Covariance matrices and save them."""
+"""Computes Crosspectrum matrices and save them.
+
+Author: Arthur Dehgan"""
+import os
 from time import time
-from scipy.io import savemat
-from pyriemann.estimation import Covariances
 from path import Path as path
 from joblib import Parallel, delayed
-from utils import import_data, elapsed_time
-from params import DATA_PATH, SAVE_PATH, SUBJECT_LIST, LABEL_PATH, STATE_LIST
+import numpy as np
+# from pyriemann.estimationmod import CospCovariances
+from pyriemann.estimation import Covariances
+from scipy.io import savemat, loadmat
+from utils import elapsed_time, load_samples
+from params import DATA_PATH, SAVE_PATH, SUBJECT_LIST, STATE_LIST
+
+SAVE_PATH = SAVE_PATH / 'covariance/'
 
 
-FULL_TRIAL = False
-if FULL_TRIAL:
-    SAVE_PATH += 'covariance_full_trial'
-else:
-    SAVE_PATH += 'covariance'
+def combine_subjects(state):
+    """Combines crosspectrum matrices from subjects into one."""
+    dat, load_list = [], []
+    print(state)
+    for sub in SUBJECT_LIST:
+        file_path = path(SAVE_PATH / 'cov_s{}_{}.mat'.format(
+            sub, state))
+        try:
+            data = loadmat(file_path)['data']
+            dat.append(data)
+            load_list.append(str(file_path))
+        except IOError:
+            print(file_path, "not found")
+        path_len = len(SAVE_PATH)
+    savemat(file_path[:path_len + 4] + file_path[path_len + 8:],
+            {'data': np.asarray(dat)})
+    for file in load_list:
+        os.remove(file)
 
 
-def main(state):
-    """Do the thing."""
+def compute_cov(state):
+    """Computes the crosspectrum matrices per subjects."""
+    for sub in SUBJECT_LIST:
+        file_path = path(SAVE_PATH / 'cov_s{}_{}.mat'.format(
+            sub, state))
 
-    file_path = path(SAVE_PATH / 'cov_{}.mat'.format(state))
-    if not file_path.isfile():
-        data, _ = import_data(DATA_PATH, state,
-                              SUBJECT_LIST, LABEL_PATH, FULL_TRIAL)
-
-        covs = []
-        for trial in data:
+        if not file_path.isfile():
+            # data must be of shape n_trials x n_elec x n_samples
+            data = load_samples(DATA_PATH, sub, state)
             cov = Covariances()
-            covs.append(cov.fit_transform(trial))
-
-        savemat(file_path, {'data': covs})
+            mat = cov.fit_transform(data)
+            savemat(file_path, {'data': mat})
 
 
 if __name__ == '__main__':
-    START_TIME = time()
-    Parallel(n_jobs=-1)(delayed(main)(state) for state in STATE_LIST)
-    print('total time lapsed : %s' % elapsed_time(START_TIME, time()))
+    T_START = time()
+    Parallel(n_jobs=-1)(delayed(compute_cov)(
+        state)
+                        for state in STATE_LIST)
+    print('combining subjects data')
+    Parallel(n_jobs=-1)(delayed(combine_subjects)(
+        state)
+                        for state in STATE_LIST)
+    print('total time lapsed : %s' % elapsed_time(T_START, time()))
