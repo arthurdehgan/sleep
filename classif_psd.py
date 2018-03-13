@@ -12,7 +12,7 @@ from scipy.io import savemat, loadmat
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.model_selection import cross_val_score
 from utils import StratifiedLeave2GroupsOut, elapsed_time, create_groups
-from params import SAVE_PATH, N_ELEC, LABEL_PATH, path, CHANNEL_NAMES,\
+from params import SAVE_PATH, LABEL_PATH, path, CHANNEL_NAMES,\
                    WINDOW, OVERLAP, STATE_LIST, FREQ_DICT
 
 N_PERMUTATIONS = 1000
@@ -23,17 +23,16 @@ def classification(state, elec):
     labels = loadmat(LABEL_PATH / state + '_labels.mat')['y'].ravel()
     labels, groups = create_groups(labels)
 
-    elec_name = CHANNEL_NAMES[elec]
     for key in FREQ_DICT:
-        print(state, elec_name, key)
+        print(state, elec, key)
         results_file_path = SAVE_PATH / 'results' /\
                             'perm_PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
-                                state, key, elec_name, WINDOW, OVERLAP)
+                                state, key, elec, WINDOW, OVERLAP)
         if not path(results_file_path).isfile():
             # print('\nloading PSD for {} frequencies'.format(key))
             data_file_path = SAVE_PATH /\
                     'PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
-                        state, key, elec_name, WINDOW, OVERLAP)
+                        state, key, elec, WINDOW, OVERLAP)
             if path(data_file_path).isfile():
                 temp = loadmat(data_file_path)['data'].ravel()
                 data = temp[0].ravel()
@@ -83,7 +82,11 @@ def classification(state, elec):
 if __name__ == '__main__':
     T0 = time()
 
-    Parallel(n_jobs=-1)(delayed(classification)(state,
-                                                elec)
-                        for state in STATE_LIST for elec in range(N_ELEC))
+    # Parallel(n_jobs=-1)(delayed(classification)(state,
+    #                                             elec)
+    #                     for state in STATE_LIST for elec in CHANNEL_NAMES)
+    for state in STATE_LIST:
+        for elec in CHANNEL_NAMES:
+            classification(state, elec)
+
     print('total time lapsed : {}'.format(elapsed_time(T0, time())))
