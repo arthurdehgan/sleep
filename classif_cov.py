@@ -60,12 +60,10 @@ def main(state, key):
         label, groups = create_groups(label)
 
     file_path = SAVE_PATH / 'results' /\
-        'classif_cov_{}_{}_{}_{:.2f}.mat'.format(
-            state, key, WINDOW, OVERLAP)
+        'classif_cov_{}.mat'.format(state)
 
     if not file_path.isfile():
-        data_file_path = path(SAVE_PATH / 'cov_{}_{}_{}_{:.2f}.mat'.format(
-            state, key, WINDOW, OVERLAP))
+        data_file_path = path(SAVE_PATH / 'cov_{}.mat'.format(state))
         if data_file_path.isfile():
             data = loadmat(data_file_path)['data'].ravel()
             if FULL_TRIAL:
