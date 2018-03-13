@@ -55,7 +55,7 @@ def classification(state, elec):
                                          estimator=clf,
                                          X=data, y=labels,
                                          groups=groups,
-                                         n_jobs=1).mean()
+                                         n_jobs=-1).mean()
             for _ in range(N_PERMUTATIONS):
                 clf = LDA()
                 perm_set = permutation(len(labels))
@@ -65,7 +65,7 @@ def classification(state, elec):
                                               estimator=clf,
                                               X=data, y=labels_perm,
                                               groups=groups_perm,
-                                              n_jobs=1).mean())
+                                              n_jobs=-1).mean())
             for score in scores:
                 if good_score <= score:
                     pvalue += 1/N_PERMUTATIONS
