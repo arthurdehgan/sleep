@@ -12,7 +12,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from pyriemann.classification import TSclassifier
 from utils import create_groups, StratifiedLeave2GroupsOut, elapsed_time
-from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW,\
+from params import SAVE_PATH, STATE_LIST, WINDOW,\
                    OVERLAP, LABEL_PATH
 # import pdb
 
@@ -94,8 +94,7 @@ def main(state, key):
 if __name__ == '__main__':
     TIMELAPSE_START = time()
     # Parallel(n_jobs=-1)(delayed(main)(state, key)
-    #                    for key in FREQ_DICT for state in STATE_LIST)
-    for key in FREQ_DICT:
-        for state in STATE_LIST:
-            main(state, key)
+    #                    for state in STATE_LIST)
+    for state in STATE_LIST:
+        main(state, key)
     print('total time lapsed : %s' % elapsed_time(TIMELAPSE_START, time()))
