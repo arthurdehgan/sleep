@@ -30,8 +30,7 @@ def cross_val(train_index, test_index, clf, X, y):
 
 
 def cross_val_scores(clf, cv, X, y, groups=None, n_jobs=-1):
-    results = []
-    results.append(Parallel(n_jobs=n_jobs)(delayed(cross_val)(train_index,
+    results = (Parallel(n_jobs=n_jobs)(delayed(cross_val)(train_index,
                                                               test_index,
                                                               clf,
                                                               X,
@@ -40,8 +39,8 @@ def cross_val_scores(clf, cv, X, y, groups=None, n_jobs=-1):
                                                            groups=groups)))
     accuracy, auc_list = [], []
     for test in results:
-        y_pred = test[0][0]
-        y_test = test[0][1]
+        y_pred = test[0]
+        y_test = test[1]
         acc = accuracy_score(y_test, y_pred)
         auc = roc_auc_score(y_test, y_pred)
         accuracy.append(acc)
@@ -49,9 +48,9 @@ def cross_val_scores(clf, cv, X, y, groups=None, n_jobs=-1):
     return accuracy, auc_list
 
 
-def main(state, key):
+def main(state):
     """Where the magic happens"""
-    print(state, key)
+    print(state)
     if FULL_TRIAL:
         label = np.concatenate((np.ones(18,), np.zeros(18,)))
         groups = range(36)
@@ -84,8 +83,8 @@ def main(state, key):
             savemat(file_path, {'data': accuracy, 'auc': auc_list})
 
             accuracy = np.asarray(accuracy)
-            print('accuracy for %s frequencies : %0.2f (+/- %0.2f)' %
-                  (key, np.mean(accuracy), np.std(accuracy)))
+            print('accuracy for state %s : %0.2f (+/- %0.2f)' %
+                  (state, np.mean(accuracy), np.std(accuracy)))
 
         else:
             print(data_file_path.name + ' Not found')
@@ -96,5 +95,5 @@ if __name__ == '__main__':
     # Parallel(n_jobs=-1)(delayed(main)(state, key)
     #                    for state in STATE_LIST)
     for state in STATE_LIST:
-        main(state, key)
+        main(state)
     print('total time lapsed : %s' % elapsed_time(TIMELAPSE_START, time()))

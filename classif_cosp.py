@@ -30,8 +30,7 @@ def cross_val(train_index, test_index, clf, X, y):
 
 
 def cross_val_scores(clf, cv, X, y, groups=None, n_jobs=-1):
-    results = []
-    results.append(Parallel(n_jobs=n_jobs)(delayed(cross_val)(train_index,
+    results = (Parallel(n_jobs=n_jobs)(delayed(cross_val)(train_index,
                                               test_index,
                                               clf,
                                               X,
@@ -40,8 +39,8 @@ def cross_val_scores(clf, cv, X, y, groups=None, n_jobs=-1):
                                                                             groups=groups)))
     accuracy, auc_list = [], []
     for test in results:
-        y_pred = test[0][0]
-        y_test = test[0][1]
+        y_pred = test[0]
+        y_test = test[1]
         acc = accuracy_score(y_test, y_pred)
         auc = roc_auc_score(y_test, y_pred)
         accuracy.append(acc)
