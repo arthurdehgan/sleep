@@ -29,7 +29,7 @@ def cross_val(train_index, test_index, clf, X, y):
     return y_pred, y_test
 
 
-def cross_val_scores(clf, cv, X, y, groups=None, n_jobs=-1):
+def cross_val_scores(clf, cv, X, y, groups=None, n_jobs=1):
     results = (Parallel(n_jobs=n_jobs)(delayed(cross_val)(train_index,
                                               test_index,
                                               clf,
@@ -58,8 +58,8 @@ def main(state, key):
         label = loadmat(LABEL_PATH / state + '_labels.mat')['y'].ravel()
         label, groups = create_groups(label)
 
-    file_path = SAVE_PATH / 'results' /\
         # 'classif_cosp_{}_{}_{}_{:.2f}.mat'.format(
+    file_path = SAVE_PATH / 'results' /\
         'classif_im_cosp_{}_{}_{}_{:.2f}.mat'.format(
             state, key, WINDOW, OVERLAP)
 
@@ -77,12 +77,21 @@ def main(state, key):
                 if len(data.shape) > 3:
                     data = data.mean(axis=-1)
 
-            data = abs(data)
+            # for trial in range(len(data)):
+            #     for i in range(19):
+            #         for j in range(19):
+            #             dat = data[trial,i,j]
+            #             if np.isfinite(dat):
+            #                 data[trial,i,j] = 0
+            #             else:
+            #                 data[trial,i,j] = abs(dat)
+            # print(data[trial])
+
             cross_val = StratifiedLeave2GroupsOut()
             lda = LDA()
             clf = TSclassifier(clf=lda)
             accuracy, auc_list = cross_val_scores(clf, cross_val,
-                                                  data, label, groups, n_jobs=-1)
+                                                  data, label, groups, n_jobs=1)
 
             savemat(file_path, {'data': accuracy, 'auc': auc_list})
 
