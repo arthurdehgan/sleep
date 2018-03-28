@@ -1,15 +1,15 @@
 '''Generate topomaps'''
 from mne.viz import plot_topomap
 from scipy.io import loadmat
+from scipy.stats import zscore
+from params import SAVE_PATH, STATE_LIST, CHANNEL_NAMES
 import numpy as np
 import matplotlib.pyplot as plt
 plt.switch_backend('agg')
-from scipy.stats import zscore
-from params import SAVE_PATH, STATE_LIST, N_ELEC, CHANNEL_NAMES
 
 DATA_PATH = SAVE_PATH / 'psd'
 RESULTS_PATH = DATA_PATH / 'results'
-POS_FILE = SAVE_PATH / 'Coord_EEG_1020.mat'
+POS_FILE = SAVE_PATH / '../Coord_EEG_1020.mat'
 SENSORS_POS = loadmat(POS_FILE)['Cor']
 FREQS = ['Delta', 'Theta', 'Alpha', 'Sigma', 'Beta', 'Gamma1', 'Gamma2']
 WINDOW = 1000
@@ -24,10 +24,13 @@ for stage in STATE_LIST:
 
         scores, pvalues = [], []
         dreamer, ndreamer = [], []
-        for elec in range(N_ELEC):
+        for elec in CHANNEL_NAMES:
             file_name = 'perm_PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
                         stage, freq, elec, WINDOW, OVERLAP)
-            score = loadmat(RESULTS_PATH / file_name)['score'].ravel()
+            try:
+                score = loadmat(RESULTS_PATH / file_name)['score'].ravel()
+            except TypeError:
+                print(file_name)
             scores.append(score[0]*100)
 
             pvalue = loadmat(RESULTS_PATH / file_name)['pvalue'].ravel()
@@ -35,11 +38,15 @@ for stage in STATE_LIST:
 
             file_name = 'PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
                         stage, freq, elec, WINDOW, OVERLAP)
-            PSD = loadmat(DATA_PATH / file_name)['data'].ravel()
+            try:
+                PSD = loadmat(DATA_PATH / file_name)['data'].ravel()
+            except TypeError:
+                print(file_name)
             ndreamer.append(np.mean([e.ravel().mean() for e in PSD[18:]]))
             dreamer.append(np.mean([e.ravel().mean() for e in PSD[:18]]))
 
-        ttest = loadmat(RESULTS_PATH / 'ttest_perm_{}_{}.mat'.format(stage, freq))
+        ttest = loadmat(RESULTS_PATH /
+                        'ttest_perm_{}_{}.mat'.format(stage, freq))
         tt_pvalues_r = ttest['p_right'][0]
         tt_pvalues_l = ttest['p_left'][0]
         t_values = zscore(ttest['t_values'][0])
@@ -83,7 +90,8 @@ for stage in STATE_LIST:
                                  contours=0)
             fig.colorbar(ax, shrink=.65)
 
-        fig.text(0.004, 1 - (2*j-1)/14, freq, va='center', rotation=90, size='x-large')
+        fig.text(0.004, 1 - (2*j-1)/14,
+                 freq, va='center', rotation=90, size='x-large')
         j += 1
         k += 5
 
@@ -92,4 +100,4 @@ for stage in STATE_LIST:
     plt.tight_layout()
     # plt.suptitle('Topomap {}'.format(stage))
     file_name = 'topomap_{}'.format(stage)
-    plt.savefig(SAVE_PATH / 'figures' / file_name, dpi=300)
+    plt.savefig(SAVE_PATH / '../figures' / file_name, dpi=300)

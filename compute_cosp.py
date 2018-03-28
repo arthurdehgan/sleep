@@ -6,8 +6,8 @@ from time import time
 from path import Path as path
 from joblib import Parallel, delayed
 import numpy as np
-# from pyriemann.estimationmod import CospCovariances
-from pyriemann.estimation import CospCovariances
+from pyriemann.estimationmod import CospCovariances
+# from pyriemann.estimation import CospCovariances
 from scipy.io import savemat, loadmat
 from utils import elapsed_time, load_samples
 from params import DATA_PATH, SAVE_PATH, SUBJECT_LIST, \
@@ -21,8 +21,8 @@ def combine_subjects(state, freq, window, overlap):
     dat, load_list = [], []
     print(state, freq)
     for sub in SUBJECT_LIST:
-        # file_path = path(SAVE_PATH / 'im_cosp_s{}_{}_{}_{}_{:.2f}.mat'.format(
-        file_path = path(SAVE_PATH / 'cosp_s{}_{}_{}_{}_{:.2f}.mat'.format(
+        # file_path = path(SAVE_PATH / 'cosp_s{}_{}_{}_{}_{:.2f}.mat'.format(
+        file_path = path(SAVE_PATH / 'im_cosp_s{}_{}_{}_{}_{:.2f}.mat'.format(
             sub, state, freq, window, overlap))
         try:
             data = loadmat(file_path)['data']
@@ -31,8 +31,8 @@ def combine_subjects(state, freq, window, overlap):
         except IOError:
             print(file_path, "not found")
         path_len = len(SAVE_PATH)
-    # savemat(file_path[:path_len + 7] + file_path[path_len + 11:],
-    savemat(file_path[:path_len + 4] + file_path[path_len + 8:],
+    # savemat(file_path[:path_len + 4] + file_path[path_len + 8:],
+    savemat(file_path[:path_len + 7] + file_path[path_len + 11:],
             {'data': np.asarray(dat)})
     for f in load_list:
         os.remove(f)
@@ -43,8 +43,8 @@ def compute_cosp(state, freq, window, overlap):
     print(state, freq)
     freqs = FREQ_DICT[freq]
     for sub in SUBJECT_LIST:
-        # file_path = path(SAVE_PATH / 'im_cosp_s{}_{}_{}_{}_{:.2f}.mat'.format(
-        file_path = path(SAVE_PATH / 'cosp_s{}_{}_{}_{}_{:.2f}.mat'.format(
+        # file_path = path(SAVE_PATH / 'cosp_s{}_{}_{}_{}_{:.2f}.mat'.format(
+        file_path = path(SAVE_PATH / 'im_cosp_s{}_{}_{}_{}_{:.2f}.mat'.format(
             sub, state, freq, window, overlap))
 
         if not file_path.isfile():

@@ -77,6 +77,7 @@ def main(state, key):
                 if len(data.shape) > 3:
                     data = data.mean(axis=-1)
 
+            data = abs(data)
             cross_val = StratifiedLeave2GroupsOut()
             lda = LDA()
             clf = TSclassifier(clf=lda)

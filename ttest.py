@@ -5,19 +5,20 @@ from scipy.io import loadmat, savemat
 import numpy as np
 from joblib import Parallel, delayed
 from ttest_perm_indep import ttest_perm_ind_maxcor
-from params import STATE_LIST, FREQ_DICT, N_ELEC, SAVE_PATH, WINDOW, OVERLAP
+from params import STATE_LIST, FREQ_DICT, N_ELEC, SAVE_PATH, WINDOW,\
+                   OVERLAP, CHANNEL_NAMES
 
-DATA_PATH = SAVE_PATH / 'psd'
-SAVE_PATH = DATA_PATH / 'results'
+SAVE_PATH = SAVE_PATH / 'psd'
+RESULT_PATH = SAVE_PATH / 'results'
 n_perm = 9999
 p_val = 0.0005
 
 
 def main(stade, freq):
     dreamers, ndreamers = [], []
-    for elec in range(N_ELEC):
+    for elec in CHANNEL_NAMES:
 
-        file_path = DATA_PATH / 'PSD_{}_{}_{}_{}_{:.2f}'.format(
+        file_path = SAVE_PATH / 'PSD_{}_{}_{}_{}_{:.2f}'.format(
                                  stade, freq, elec, WINDOW, OVERLAP
                                  )
         try:
@@ -46,7 +47,7 @@ def main(stade, freq):
     data = {'p_right': np.asarray(p_right),
             'p_left': np.asarray(p_left),
             't_values': tval}
-    file_path = SAVE_PATH / 'ttest_perm_{}_{}.mat'.format(stade, freq)
+    file_path = RESULT_PATH / 'ttest_perm_{}_{}.mat'.format(stade, freq)
     savemat(file_path, data)
 
 

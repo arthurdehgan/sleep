@@ -14,7 +14,7 @@ from params import DATA_PATH, SAVE_PATH, SUBJECT_LIST, FREQ_DICT, STATE_LIST,\
                    SF, WINDOW, OVERLAP, CHANNEL_NAMES
 
 
-SAVE_PATH += 'psd'
+SAVE_PATH = SAVE_PATH / 'psd'
 
 
 def computeAndSavePSD(SUBJECT_LIST, state, freq, window, overlap, fmin, fmax,
@@ -32,7 +32,6 @@ def computeAndSavePSD(SUBJECT_LIST, state, freq, window, overlap, fmin, fmax,
             for sub in SUBJECT_LIST:  # pour chaque sujet
                 X = load_samples(DATA_PATH, sub, state)
                 psd_list = []
-                master_psd = []
                 for j in range(X.shape[0]):  # pour chaque trial
                     psd = computePSD(X[j, elec], window=window,
                                      overlap=OVERLAP,
@@ -40,10 +39,10 @@ def computeAndSavePSD(SUBJECT_LIST, state, freq, window, overlap, fmin, fmax,
                                      fmax=fmax,
                                      fs=fs)
                     psd_list.append(psd)
-                master_psd.append(psd_list)
-                master_psd = np.asarray(master_psd)
-                psds.append(master_psd.ravel())
+                psd_list = np.asarray(psd_list)
+                psds.append(psd_list.ravel())
 
+            print(file_path)
             savemat(file_path, {'data': psds})
 
 
@@ -51,20 +50,20 @@ if __name__ == '__main__':
     """Do the thing."""
     t0 = time()
 
-    #Parallel(n_jobs=-1)(delayed(computeAndSavePSD)(SUBJECT_LIST,
-    #                                               state,
-    #                                               freq=freq,
-    #                                               window=WINDOW,
-    #                                               overlap=OVERLAP,
-    #                                               fmin=FREQ_DICT[freq][0],
-    #                                               fmax=FREQ_DICT[freq][1],
-    #                                               fs=SF)
-    #                    for freq in FREQ_DICT
-    #                    for state in STATE_LIST)
-    for state in STATE_LIST:
-        for freq in FREQ_DICT:
-            computeAndSavePSD(SUBJECT_LIST, state, freq, WINDOW, OVERLAP,
-                              fmin=FREQ_DICT[freq][0],
-                              fmax=FREQ_DICT[freq][1],
-                              fs=SF)
+    Parallel(n_jobs=-1)(delayed(computeAndSavePSD)(SUBJECT_LIST,
+                                                   state,
+                                                   freq=freq,
+                                                   window=WINDOW,
+                                                   overlap=OVERLAP,
+                                                   fmin=FREQ_DICT[freq][0],
+                                                   fmax=FREQ_DICT[freq][1],
+                                                   fs=SF)
+                        for freq in FREQ_DICT
+                        for state in STATE_LIST)
+    #for state in STATE_LIST:
+    #    for freq in FREQ_DICT:
+    #        computeAndSavePSD(SUBJECT_LIST, state, freq, WINDOW, OVERLAP,
+    #                          fmin=FREQ_DICT[freq][0],
+    #                          fmax=FREQ_DICT[freq][1],
+    #                          fs=SF)
     print('total time lapsed : %s' % elapsed_time(t0, time()))
