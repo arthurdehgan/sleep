@@ -59,13 +59,13 @@ def main(state, key):
         label, groups = create_groups(label)
 
     file_path = SAVE_PATH / 'results' /\
-        'classif_cosp_{}_{}_{}_{:.2f}.mat'.format(
-        # 'classif_im_cosp_{}_{}_{}_{:.2f}.mat'.format(
+        # 'classif_cosp_{}_{}_{}_{:.2f}.mat'.format(
+        'classif_im_cosp_{}_{}_{}_{:.2f}.mat'.format(
             state, key, WINDOW, OVERLAP)
 
     if not file_path.isfile():
-        # data_file_path = path(SAVE_PATH / 'im_cosp_{}_{}_{}_{:.2f}.mat'.format(
-        data_file_path = path(SAVE_PATH / 'cosp_{}_{}_{}_{:.2f}.mat'.format(
+        data_file_path = path(SAVE_PATH / 'im_cosp_{}_{}_{}_{:.2f}.mat'.format(
+        # data_file_path = path(SAVE_PATH / 'cosp_{}_{}_{}_{:.2f}.mat'.format(
             state, key, WINDOW, OVERLAP))
         if data_file_path.isfile():
             data = loadmat(data_file_path)['data'].ravel()
