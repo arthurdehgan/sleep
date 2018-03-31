@@ -14,7 +14,7 @@ SENSORS_POS = loadmat(POS_FILE)['Cor']
 FREQS = ['Delta', 'Theta', 'Alpha', 'Sigma', 'Beta', 'Gamma1', 'Gamma2']
 WINDOW = 1000
 OVERLAP = 0
-p = 1/1001
+p = .05
 
 for stage in STATE_LIST:
 

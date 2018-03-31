@@ -16,8 +16,22 @@ from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW,\
                    OVERLAP, LABEL_PATH
 # import pdb
 
-FULL_TRIAL = False
+# prefix = 'perm_'
+prefix = 'classif_'
+# name = 'cosp'
+# name = 'ft_cosp'
+# name = 'moy_cosp'
+# name = 'im_cosp'
+# name = 'wpli'
+# name = 'coh'
+name = 'imcoh'
+# name = 'ft_wpli'
+# name = 'ft_coh'
+# name = 'ft_imcoh'
+pattern = name + '_{}_{}_{}_{:.2f}.mat'
+save_pattern = prefix + name + '_{}_{}_{}_{:.2f}.mat'
 SAVE_PATH = SAVE_PATH / 'crosspectre/'
+FULL_TRIAL = name.startswith('ft') or name.startswith('moy')
 
 
 def cross_val(train_index, test_index, clf, X, y):
@@ -30,13 +44,14 @@ def cross_val(train_index, test_index, clf, X, y):
 
 
 def cross_val_scores(clf, cv, X, y, groups=None, n_jobs=1):
-    results = (Parallel(n_jobs=n_jobs)(delayed(cross_val)(train_index,
-                                              test_index,
-                                              clf,
-                                              X,
-                                              y)
-                                    for train_index, test_index in cv.split(X=X, y=y,
-                                                                            groups=groups)))
+    results = (Parallel(n_jobs=n_jobs)(delayed(cross_val)(
+        train_index,
+        test_index,
+        clf,
+        X,
+        y)
+        for train_index, test_index in cv.split(X=X, y=y,
+                                                groups=groups)))
     accuracy, auc_list = [], []
     for test in results:
         y_pred = test[0]
@@ -60,19 +75,15 @@ def main(state, key):
 
         # 'classif_cosp_{}_{}_{}_{:.2f}.mat'.format(
     file_path = SAVE_PATH / 'results' /\
-        'classif_im_cosp_{}_{}_{}_{:.2f}.mat'.format(
+        save_pattern.format(
             state, key, WINDOW, OVERLAP)
 
     if not file_path.isfile():
-        data_file_path = path(SAVE_PATH / 'im_cosp_{}_{}_{}_{:.2f}.mat'.format(
-        # data_file_path = path(SAVE_PATH / 'cosp_{}_{}_{}_{:.2f}.mat'.format(
+        data_file_path = path(SAVE_PATH / pattern.format(
             state, key, WINDOW, OVERLAP))
         if data_file_path.isfile():
             data = loadmat(data_file_path)['data'].ravel()
-            if FULL_TRIAL:
-                data = data.mean(axis=-1)
-                data = data.reshape(36, 19, 19)
-            else:
+            if not FULL_TRIAL:
                 data = np.concatenate((data[range(len(data))]))
                 if len(data.shape) > 3:
                     data = data.mean(axis=-1)
@@ -91,7 +102,8 @@ def main(state, key):
             lda = LDA()
             clf = TSclassifier(clf=lda)
             accuracy, auc_list = cross_val_scores(clf, cross_val,
-                                                  data, label, groups, n_jobs=1)
+                                                  data, label,
+                                                  groups, n_jobs=1)
 
             savemat(file_path, {'data': accuracy, 'auc': auc_list})
 
@@ -99,15 +111,12 @@ def main(state, key):
             print('accuracy for %s frequencies : %0.2f (+/- %0.2f)' %
                   (key, np.mean(accuracy), np.std(accuracy)))
 
-
         else:
             print(data_file_path.name + ' Not found')
 
 
 if __name__ == '__main__':
     TIMELAPSE_START = time()
-    #Parallel(n_jobs=-1)(delayed(main)(state, key)
-    #                    for key in FREQ_DICT for state in STATE_LIST)
     for key in FREQ_DICT:
         for state in STATE_LIST:
             main(state, key)

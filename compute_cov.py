@@ -13,6 +13,11 @@ from utils import elapsed_time, load_samples
 from params import DATA_PATH, SAVE_PATH, SUBJECT_LIST, STATE_LIST
 
 SAVE_PATH = SAVE_PATH / 'covariance/'
+FULL_TRIAL = True
+if FULL_TRIAL:
+    prefix = 'ft_cov'
+else:
+    prefix = 'cov'
 
 
 def combine_subjects(state):
@@ -20,7 +25,9 @@ def combine_subjects(state):
     dat, load_list = [], []
     print(state)
     for sub in SUBJECT_LIST:
-        file_path = path(SAVE_PATH / 'cov_s{}_{}.mat'.format(
+        pattern = prefix + '_s{}_{}.mat'
+        pattern = prefix + '_{}.mat'
+        file_path = path(SAVE_PATH / pattern.format(
             sub, state))
         try:
             data = loadmat(file_path)['data']
@@ -28,8 +35,7 @@ def combine_subjects(state):
             load_list.append(str(file_path))
         except IOError:
             print(file_path, "not found")
-        path_len = len(SAVE_PATH)
-    savemat(file_path[:path_len + 4] + file_path[path_len + 8:],
+    savemat(SAVE_PATH / save_pattern.format(state),
             {'data': np.asarray(dat)})
     for file in load_list:
         os.remove(file)
@@ -38,12 +44,16 @@ def combine_subjects(state):
 def compute_cov(state):
     """Computes the crosspectrum matrices per subjects."""
     for sub in SUBJECT_LIST:
-        file_path = path(SAVE_PATH / 'cov_s{}_{}.mat'.format(
+        pattern = prefix + '_s{}_{}.mat'
+        file_path = path(SAVE_PATH / pattern.format(
             sub, state))
 
         if not file_path.isfile():
             # data must be of shape n_trials x n_elec x n_samples
             data = load_samples(DATA_PATH, sub, state)
+            if FULL_TRIAL:
+                data = np.concatenate(data, axis=1)
+                data = data.reshape(1, data.shape[0], data.shape[1])
             cov = Covariances()
             mat = cov.fit_transform(data)
             savemat(file_path, {'data': mat})

@@ -5,7 +5,7 @@ import numpy as np
 from scipy.stats import ttest_ind
 
 
-def ttest_perm_ind_maxcor(cond1, cond2, n_perm,
+def ttest_perm_ind_maxcor(cond1, cond2, n_perm=0, correction='maxstat'
                           equal_var=False, two_tailed=True):
     """ttest indep with permuattions and maxstat correction
 
@@ -14,7 +14,9 @@ def ttest_perm_ind_maxcor(cond1, cond2, n_perm,
                       or n_trials x n_electrodes. arrays of data for
                       the independant conditions.
 
-        n_perm: int, number of permutations to do, the more the better.
+        n_perm: int, 0, number of permutations to do.
+               If n_perm = 0 then exaustive permutations will be done.
+               It will take exponential time with data size.
 
         equal_var: bool, False, see scipy.stats.ttest_ind.
 
@@ -53,11 +55,15 @@ def perm_test(cond1, cond2, n_perm, equal_var):
     """
     full_mat = np.concatenate((cond1, cond2), axis=0)
     perm_t = []
-    for _ in range(n_perm):
-        np.random.shuffle(full_mat)
-        cond1 = full_mat[:len(cond1)]
-        cond2 = full_mat[len(cond2):]
-        perm_t.append(ttest_ind(cond1, cond2, equal_var=equal_var)[0])
+    if n_perm == 0:
+        # for id in combinations(range(len(cond1) + len(cond2)), min(len(cond1), len(cond2))):
+            # perm_t.append(ttest_ind(cond1[
+    else:
+        for _ in range(n_perm):
+            np.random.shuffle(full_mat)
+            cond1 = full_mat[:len(cond1)]
+            cond2 = full_mat[len(cond2):]
+            perm_t.append(ttest_ind(cond1, cond2, equal_var=equal_var)[0])
     return perm_t
 
 
