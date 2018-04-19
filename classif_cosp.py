@@ -19,18 +19,17 @@ from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW,\
 # prefix = 'perm_'
 prefix = 'classif_'
 # name = 'cosp'
-# name = 'ft_cosp'
+name = 'ft_cosp'
 # name = 'moy_cosp'
 # name = 'im_cosp'
 # name = 'wpli'
 # name = 'coh'
-name = 'imcoh'
+# name = 'imcoh'
 # name = 'ft_wpli'
 # name = 'ft_coh'
 # name = 'ft_imcoh'
 pattern = name + '_{}_{}_{}_{:.2f}.mat'
-save_pattern = prefix + name + '_{}_{}_{}_{:.2f}.mat'
-SAVE_PATH = SAVE_PATH / 'crosspectre/'
+SAVE_PATH = SAVE_PATH / name
 FULL_TRIAL = name.startswith('ft') or name.startswith('moy')
 
 
@@ -73,17 +72,18 @@ def main(state, key):
         label = loadmat(LABEL_PATH / state + '_labels.mat')['y'].ravel()
         label, groups = create_groups(label)
 
-        # 'classif_cosp_{}_{}_{}_{:.2f}.mat'.format(
     file_path = SAVE_PATH / 'results' /\
-        save_pattern.format(
+        prefix + name + '_{}_{}_{}_{:.2f}.mat'.format(
             state, key, WINDOW, OVERLAP)
 
     if not file_path.isfile():
         data_file_path = path(SAVE_PATH / pattern.format(
             state, key, WINDOW, OVERLAP))
         if data_file_path.isfile():
-            data = loadmat(data_file_path)['data'].ravel()
+            data = loadmat(data_file_path)['data']
+            data = data.astype(np.float32)
             if not FULL_TRIAL:
+                data = data.ravel()
                 data = np.concatenate((data[range(len(data))]))
                 if len(data.shape) > 3:
                     data = data.mean(axis=-1)
