@@ -4,7 +4,7 @@ import numpy as np
 from numpy.random import permutation
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.model_selection import cross_val_score
-from params import N_ELEC, LABEL_PATH, SUBJECT_LIST, SAVE_PATH
+from params import CHANNEL_NAMES, LABEL_PATH, SUBJECT_LIST, SAVE_PATH
 
 N_FBIN = 45
 WINDOW = 1000
@@ -12,14 +12,13 @@ OVERLAP = 0
 N_PERMUTATIONS = 1000
 SLEEP_LIST = ['S1', 'S2', 'SWS', 'Rem', 'NREM']
 SAVE_PATH = SAVE_PATH / 'psd/results'
-SUB_LIST = ['s' + str(e) for e in SUBJECT_LIST]
+SUB_LIST = SUBJECT_LIST
 PERM_TEST = False
 
 if __name__ == '__main__':
     for state in SLEEP_LIST:
         print(state)
-        for elec in range(N_ELEC):
-            print(elec)
+        for elec in CHANNEL_NAMES:
             y = loadmat(LABEL_PATH / state + '_labels.mat')['y'].ravel()
             y, groups = create_groups(y)
 
@@ -34,7 +33,7 @@ if __name__ == '__main__':
             dataset = []
             for sub in SUB_LIST:
                 data_file_path = SAVE_PATH.dirname() / \
-                        'PSDs_{}_{}_{}_{}_{:.2f}.mat'.format(
+                        'PSDs_{}_s{}_{}_{}_{:.2f}.mat'.format(
                             state, sub, elec, WINDOW, OVERLAP)
                 if data_file_path.isfile():
                     dataset.append(loadmat(data_file_path)['data'])
