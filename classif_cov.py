@@ -17,7 +17,10 @@ from params import SAVE_PATH, STATE_LIST, WINDOW,\
 # import pdb
 
 FULL_TRIAL = False
-SAVE_PATH = SAVE_PATH / 'covariance/'
+SAVE_PATH = SAVE_PATH / 'cov/'
+prefix = 'moy_'
+if prefix != '':
+    FULL_TRIAL = True
 
 
 def cross_val(train_index, test_index, clf, X, y):
@@ -59,16 +62,14 @@ def main(state):
         label, groups = create_groups(label)
 
     file_path = SAVE_PATH / 'results' /\
-        'classif_cov_{}.mat'.format(state)
+        'classif_' + prefix + 'cov_{}.mat'.format(state)
 
     if not file_path.isfile():
-        data_file_path = path(SAVE_PATH / 'cov_{}.mat'.format(state))
+        data_file_path = path(SAVE_PATH / prefix + 'cov_{}.mat'.format(state))
         if data_file_path.isfile():
-            data = loadmat(data_file_path)['data'].ravel()
-            if FULL_TRIAL:
-                data = data.mean(axis=-1)
-                data = data.reshape(36, 19, 19)
-            else:
+            data = loadmat(data_file_path)['data']
+            if not FULL_TRIAL:
+                data = data.ravel()
                 data = np.concatenate((data[range(len(data))]))
                 if len(data.shape) > 3:
                     data = data.mean(axis=-1)
