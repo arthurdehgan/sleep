@@ -4,43 +4,42 @@ import numpy as np
 from numpy.random import permutation
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.model_selection import cross_val_score
-from params import n_elec, label_path, subject_list, path
+from params import N_ELEC, LABEL_PATH, SUBJECT_LIST, SAVE_PATH
 
-N_FBIN = 90
+N_FBIN = 45
 WINDOW = 1000
 OVERLAP = 0
 N_PERMUTATIONS = 1000
 SLEEP_LIST = ['S1', 'S2', 'SWS', 'Rem', 'NREM']
-DATA_PATH = path('/home/arthur/Documents/riemann/PSD/')
-SAVE_PATH = DATA_PATH / 'results'
-SUB_LIST = ['s' + str(e) for e in subject_list]
+SAVE_PATH = SAVE_PATH / 'psd/results'
+SUB_LIST = ['s' + str(e) for e in SUBJECT_LIST]
 PERM_TEST = False
 
 if __name__ == '__main__':
     for state in SLEEP_LIST:
         print(state)
-        for elec in range(n_elec):
+        for elec in range(N_ELEC):
             print(elec)
-            y = loadmat(label_path / state + '_labels.mat')['y'].ravel()
+            y = loadmat(LABEL_PATH / state + '_labels.mat')['y'].ravel()
             y, groups = create_groups(y)
 
             fbin_not_done = []
-            for fbin in range(N_FBIN):
-                results_file_path = SAVE_PATH / \
-                        'perm_PSD_bin_{}_{}_{}_{}_{:.2f}.mat'.format(
-                            fbin, state, elec, WINDOW, OVERLAP)
-                if not path(results_file_path).isfile():
-                    fbin_not_done.append(fbin)
+            #for fbin in range(N_FBIN):
+            #    results_file_path = SAVE_PATH / \
+            #            'perm_PSD_bin_{}_{}_{}_{}_{:.2f}.mat'.format(
+            #                fbin, state, elec, WINDOW, OVERLAP)
+            #    if not path(results_file_path).isfile():
+            #        fbin_not_done.append(fbin)
 
             dataset = []
             for sub in SUB_LIST:
-                data_file_path = DATA_PATH / \
+                data_file_path = SAVE_PATH.dirname() / \
                         'PSDs_{}_{}_{}_{}_{:.2f}.mat'.format(
                             state, sub, elec, WINDOW, OVERLAP)
-                if path(data_file_path).isfile():
+                if data_file_path.isfile():
                     dataset.append(loadmat(data_file_path)['data'])
                 else:
-                    print(path(data_file_path) + ' Not found')
+                    print(data_file_path + ' Not found')
             dataset = np.vstack(dataset)
             print('frequency bins :', [f+1 for f in fbin_not_done], sep='\n')
 
@@ -74,12 +73,13 @@ if __name__ == '__main__':
                     print('{} : {:.2f} significatif a p={:.4f}'.format(
                         fbin, good_score, pvalue))
 
-                    results_file_path = SAVE_PATH / \
-                        'perm_PSD_bin_{}_{}_{}_{}_{:.2f}.mat'.format(
-                            fbin, state, elec, WINDOW, OVERLAP)
+                    if PERM_TEST:
+                        results_file_path = SAVE_PATH / \
+                            'perm_PSD_bin_{}_{}_{}_{}_{:.2f}.mat'.format(
+                                fbin, state, elec, WINDOW, OVERLAP)
                 else:
                     data = {'score': good_scores}
                     results_file_path = SAVE_PATH / \
-                        'PSD_bin_{}_{}_{}_{}_{:.2f}.mat'.format(
+                        'classif_PSD_bin_{}_{}_{}_{}_{:.2f}.mat'.format(
                             fbin, state, elec, WINDOW, OVERLAP)
                 savemat(results_file_path, data)
