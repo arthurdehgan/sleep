@@ -8,8 +8,8 @@ from itertools import combinations
 from joblib import Parallel, delayed
 
 
-def ttest_perm_unpaired(cond1, cond2, n_perm=0, correction=None,
-                        equal_var=False, two_tailed=True, n_jobs=1):
+def ttest_perm_unpaired(cond1, cond2, n_perm=0, correction='maxstat',
+                        equal_var=False, two_tailed=False, n_jobs=1):
     """ttest indep with permuattions and maxstat correction
 
     Parameters:
@@ -27,17 +27,15 @@ def ttest_perm_unpaired(cond1, cond2, n_perm=0, correction=None,
 
         equal_var: bool, False, see scipy.stats.ttest_ind.
 
-        two_tailed: bool, False, if you want two-tailed ttest.
+        two_tailed: bool, False, set to True if you want two-tailed ttest.
 
         n_jobs: int, 1, Number of cores used to computer permutations in
-                parallel
+                parallel (-1 uses all cores and will be faster)
 
     Returns:
         tval: list, the calculated t-statistics
 
-        pval: list if two_tailed = False
-               tuple(list: pval_right, list: pval_left) otherwisei
-               pvalues after permutation test
+        pval: pvalues after permutation test and correction if selected
     """
     tval = ttest_ind(cond1, cond2, equal_var=equal_var)[0]
 
@@ -124,8 +122,8 @@ def compute_pvalues(tval, perm_t, two_tailed, correction=None):
 
     if correction == 'maxstat':
         perm_t = np.asarray(perm_t).max(axis=1)
-    elif correction == None:
-        continue
+    elif correction is None:
+        pass
     else:
         raise('This correction option has not been implemented yes')
 
