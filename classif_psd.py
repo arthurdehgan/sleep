@@ -48,7 +48,7 @@ def classification(state, elec):
 
             # print('classification...')
             sl2go = StratifiedLeave2GroupsOut()
-            clf = LDA()
+            clf = LDA(solver='lsqr')
             scores = []
             pvalue = 0
             good_score = cross_val_score(cv=sl2go,
