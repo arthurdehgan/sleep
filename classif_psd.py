@@ -17,6 +17,7 @@ from params import SAVE_PATH, LABEL_PATH, path, CHANNEL_NAMES,\
 
 N_PERMUTATIONS = 1000
 SAVE_PATH = SAVE_PATH / 'psd'
+SOLVER = 'lsqr'  # 'svd'
 
 
 def classification(state, elec):
@@ -25,7 +26,7 @@ def classification(state, elec):
 
     for key in FREQ_DICT:
         print(state, elec, key)
-        results_file_path = SAVE_PATH / 'results' /\
+        results_file_path = SAVE_PATH / 'results/{}_solver'.format(SOLVER) /\
                             'perm_PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
                                 state, key, elec, WINDOW, OVERLAP)
         if not path(results_file_path).isfile():
@@ -48,7 +49,7 @@ def classification(state, elec):
 
             # print('classification...')
             sl2go = StratifiedLeave2GroupsOut()
-            clf = LDA(solver='lsqr')
+            clf = LDA(solver=SOLVER)
             scores = []
             pvalue = 0
             good_score = cross_val_score(cv=sl2go,
