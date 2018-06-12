@@ -500,7 +500,7 @@ class StratifiedLeavePGroupsOut(BaseStratCrossValidator):
                 "expects that at least n_groups + 1 (%d) unique groups be "
                 "present" % (self.n_groups, unique_groups, self.n_groups + 1))
         unique_groups = np.delete(unique_groups,
-                                  np.where(group_counts < t05*len(X)))
+                                  np.where(group_counts < .05*len(X)))
         combi = combinations(range(len(unique_groups)), self.n_groups)
         for indices in combi:
             test_index = np.zeros(_num_samples(X), dtype=np.bool)
