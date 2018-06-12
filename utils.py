@@ -438,7 +438,7 @@ class BaseStratCrossValidator(with_metaclass(ABCMeta)):
         return _build_repr(self)
 
 
-class StratLeavePGroupsOut(BaseStratCrossValidator):
+class StratifiedLeavePGroupsOut(BaseStratCrossValidator):
     """Leave P Group(s) Out cross-validator.
 
     Provides train/test indices to split data according to a third-party
@@ -500,7 +500,7 @@ class StratLeavePGroupsOut(BaseStratCrossValidator):
                 "expects that at least n_groups + 1 (%d) unique groups be "
                 "present" % (self.n_groups, unique_groups, self.n_groups + 1))
         unique_groups = np.delete(unique_groups,
-                                  np.where(group_counts > .05*len(X)))
+                                  np.where(group_counts < t05*len(X)))
         combi = combinations(range(len(unique_groups)), self.n_groups)
         for indices in combi:
             test_index = np.zeros(_num_samples(X), dtype=np.bool)
@@ -570,5 +570,5 @@ def _build_repr(self):
 
 
 def StratifiedLeave2GroupsOut():
-    return StratLeavePGroupsOut(n_groups=2)
+    return StratifiedLeavePGroupsOut(n_groups=2)
 
