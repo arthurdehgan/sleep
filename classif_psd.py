@@ -17,7 +17,7 @@ from params import SAVE_PATH, LABEL_PATH, path, CHANNEL_NAMES,\
 
 N_PERMUTATIONS = 1000
 SAVE_PATH = SAVE_PATH / 'psd'
-SOLVER = 'lsqr'  # 'svd'
+SOLVER = 'svd'  # 'svd' 'lsqr'
 
 
 def classification(state, elec):
@@ -67,6 +67,7 @@ def classification(state, elec):
                                               X=data, y=labels_perm,
                                               groups=groups_perm,
                                               n_jobs=-1).mean())
+
             for score in scores:
                 if good_score <= score:
                     pvalue += 1/N_PERMUTATIONS
