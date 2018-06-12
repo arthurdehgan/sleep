@@ -18,7 +18,7 @@ from params import SAVE_PATH, STATE_LIST, WINDOW,\
 
 FULL_TRIAL = False
 SAVE_PATH = SAVE_PATH / 'cov/'
-prefix = 'moy_'
+prefix = ''
 if prefix != '':
     FULL_TRIAL = True
 
