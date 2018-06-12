@@ -6,6 +6,7 @@ from scipy.stats import ttest_ind
 from scipy.special import comb
 from itertools import combinations
 from joblib import Parallel, delayed
+from sys import maxsize
 
 
 def ttest_perm_unpaired(cond1, cond2, n_perm=0, correction='maxstat',
@@ -81,9 +82,13 @@ def perm_test(cond1, cond2, n_perm, equal_var, n_jobs):
     full_mat = np.concatenate((cond1, cond2), axis=0)
     n_samples = len(full_mat)
     perm_t = []
-    n_comb = int(comb(n_samples, len(cond1)))
+    n_comb = comb(n_samples, len(cond1))
+    if np.isinf(n_comb):
+        n_comb = maxsize
+    else:
+        n_comb = int(n_comb)
 
-    if n_perm == 'all' or n_perm >= n_comb - 1:
+    if n_perm == 0 or n_perm >= n_comb - 1:
         # print("All permutations will be done. n_perm={}".format(n_comb - 1))
         n_perm = n_comb
     if n_perm > 9999:
