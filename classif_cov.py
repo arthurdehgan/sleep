@@ -20,7 +20,7 @@ from params import SAVE_PATH, STATE_LIST, WINDOW,\
 FULL_TRIAL = False
 SAVE_PATH = SAVE_PATH / 'cov/'
 N_PERM = 999
-prefix = 'ft_'
+prefix = 'moy_'
 if prefix != '':
     FULL_TRIAL = True
 
@@ -82,6 +82,7 @@ def main(state):
             accuracy, auc_list = cross_val_scores(clf, cross_val,
                                                   data, labels, groups,
                                                   n_jobs=-1)
+
             data = {'data': accuracy, 'auc': auc_list}
             accuracy = np.asarray(accuracy)
 

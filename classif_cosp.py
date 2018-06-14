@@ -8,6 +8,7 @@ from path import Path as path
 from joblib import Parallel, delayed
 from scipy.io import savemat, loadmat
 import numpy as np
+from numpy.random import permutation
 from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from pyriemann.classification import TSclassifier
@@ -18,9 +19,9 @@ from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW,\
 
 # prefix = 'perm_'
 prefix = 'classif_'
-name = 'cosp'
+# name = 'cosp'
 # name = 'ft_cosp'
-# name = 'moy_cosp'
+name = 'moy_cosp'
 # name = 'im_cosp'
 # name = 'wpli'
 # name = 'coh'
@@ -66,11 +67,11 @@ def main(state, key):
     """Where the magic happens"""
     print(state, key)
     if FULL_TRIAL:
-        label = np.concatenate((np.ones(18,), np.zeros(18,)))
+        labels = np.concatenate((np.ones(18,), np.zeros(18,)))
         groups = range(36)
     else:
-        label = loadmat(LABEL_PATH / state + '_labels.mat')['y'].ravel()
-        label, groups = create_groups(label)
+        labels = loadmat(LABEL_PATH / state + '_labels.mat')['y'].ravel()
+        labels, groups = create_groups(labels)
 
     file_path = SAVE_PATH / 'results' /\
         prefix + name + '_{}_{}_{}_{:.2f}.mat'.format(
@@ -102,14 +103,36 @@ def main(state, key):
             lda = LDA()
             clf = TSclassifier(clf=lda)
             accuracy, auc_list = cross_val_scores(clf, cross_val,
-                                                  data, label,
-                                                  groups, n_jobs=1)
+                                                  data, labels,
+                                                  groups, n_jobs=-1)
 
-            savemat(file_path, {'data': accuracy, 'auc': auc_list})
-
+            data = {'data': accuracy, 'auc': auc_list}
             accuracy = np.asarray(accuracy)
+
+            if FULL_TRIAL:
+                perm_scores = []
+                for _ in range(N_PERM):
+                    clf = LDA()
+                    clf = TSclassifier(clf=lda)
+                    perm_set = permutation(len(labels))
+                    labels_perm = labels[perm_set]
+                    perm_scores.append(cross_val_scores(clf,
+                                                        cross_val,
+                                                        data, labels,
+                                                        groups=groups,
+                                                        n_jobs=-1)[0].mean())
+
+                pvalue = 0
+                for score in perm_scores:
+                    if accuracy.mean() <= score:
+                        pvalue += 1/(N_PERM+1)
+                data['pvalue'] = pvalue
+
+
+            savemat(file_path, data)
+
             print('accuracy for %s frequencies : %0.2f (+/- %0.2f)' %
-                  (key, np.mean(accuracy), np.std(accuracy)))
+                  (state, accuracy.mean(), accuracy.std()))
 
         else:
             print(data_file_path.name + ' Not found')
