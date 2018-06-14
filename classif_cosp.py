@@ -81,7 +81,7 @@ def main(state, key):
             state, key, WINDOW, OVERLAP))
         if data_file_path.isfile():
             data = loadmat(data_file_path)['data']
-            data = data.astype(np.float32)
+            # data = data.astype(np.float32)
             if not FULL_TRIAL:
                 data = data.ravel()
                 data = np.concatenate((data[range(len(data))]))
