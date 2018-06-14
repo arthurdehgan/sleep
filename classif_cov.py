@@ -89,6 +89,7 @@ def main(state):
                 perm_scores = []
                 for _ in range(N_PERM):
                     clf = LDA()
+                    clf = TSclassifier(clf=lda)
                     perm_set = permutation(len(labels))
                     labels_perm = labels[perm_set]
                     perm_scores.append(cross_val_scores(clf,
