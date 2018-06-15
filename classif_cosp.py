@@ -19,9 +19,9 @@ from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW,\
 
 # prefix = 'perm_'
 prefix = 'classif_'
-# name = 'cosp'
+name = 'cosp'
 # name = 'ft_cosp'
-name = 'moy_cosp'
+# name = 'moy_cosp'
 # name = 'im_cosp'
 # name = 'wpli'
 # name = 'coh'
