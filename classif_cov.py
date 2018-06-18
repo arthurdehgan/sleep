@@ -12,9 +12,9 @@ from numpy.random import permutation
 from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from pyriemann.classification import TSclassifier
-from utils import create_groups, StratifiedLeave2GroupsOut, elapsed_time
-from params import SAVE_PATH, STATE_LIST, WINDOW,\
-                   OVERLAP, LABEL_PATH
+from utils import create_groups, StratifiedLeave2GroupsOut, elapsed_time,\
+                  compute_pval
+from params import SAVE_PATH, STATE_LIST, LABEL_PATH
 # import pdb
 
 FULL_TRIAL = False
@@ -35,13 +35,10 @@ def cross_val(train_index, test_index, clf, X, y):
 
 
 def cross_val_scores(clf, cv, X, y, groups=None, n_jobs=-1):
-    results = (Parallel(n_jobs=n_jobs)(delayed(cross_val)(train_index,
-                                                              test_index,
-                                                              clf,
-                                                              X,
-                                                              y)
-                   for train_index, test_index in cv.split(X=X, y=y,
-                                                           groups=groups)))
+    results = (Parallel(n_jobs=n_jobs)(
+        delayed(cross_val)(train_index, test_index, clf, X, y)
+        for train_index, test_index in cv.split(X=X, y=y, groups=groups)))
+
     accuracy, auc_list = [], []
     for test in results:
         y_pred = test[0]
@@ -83,7 +80,7 @@ def main(state):
                                                   data, labels, groups,
                                                   n_jobs=-1)
 
-            data = {'data': accuracy, 'auc': auc_list}
+            save = {'data': accuracy, 'auc': auc_list}
             accuracy = np.asarray(accuracy)
 
             if FULL_TRIAL:
@@ -93,20 +90,14 @@ def main(state):
                     clf = TSclassifier(clf=lda)
                     perm_set = permutation(len(labels))
                     labels_perm = labels[perm_set]
-                    perm_scores.append(cross_val_scores(clf,
-                                                        cross_val,
-                                                        data, labels,
-                                                        groups=groups,
-                                                        n_jobs=-1)[0].mean())
+                    perm_scores.append(np.mean(
+                        cross_val_scores(clf, cross_val, data,
+                                         labels_perm, groups=groups,
+                                         n_jobs=-1)[0]))
 
-                pvalue = 0
-                for score in perm_scores:
-                    if accuracy.mean() <= score:
-                        pvalue += 1/(N_PERM+1)
-                data['pvalue'] = pvalue
+                save['pvalue'] = compute_pval(accuracy.mean(), perm_scores)
 
-
-            savemat(file_path, data)
+            savemat(file_path, save)
 
             print('accuracy for state %s : %0.2f (+/- %0.2f)' %
                   (state, accuracy.mean(), accuracy.std()))

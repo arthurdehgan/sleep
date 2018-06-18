@@ -179,6 +179,15 @@ def cospectrum(X, window=128, overlap=0.75, fmin=None, fmax=None, fs=None):
 # END COVARIANCE CODE
 
 
+def compute_pval(score, perm_scores):
+    N_PERM = len(perm_scores) + 1
+    pvalue = 0
+    for sc in perm_scores:
+        if score <= sc:
+            pvalue += 1/N_PERM
+    return pvalue
+
+
 def gen_dif_index(groups, test_group):
     """Generate an index to identify which group is in test_group."""
     a = list(set(test_group))
@@ -500,14 +509,16 @@ class StratifiedLeavePGroupsOut(BaseStratCrossValidator):
                 "n_groups (%d) numbers of unique groups (%s). LeavePGroupsOut "
                 "expects that at least n_groups + 1 (%d) unique groups be "
                 "present" % (self.n_groups, unique_groups, self.n_groups + 1))
-        unique_groups = np.delete(unique_groups,
-                                  np.where(group_counts < len(X)/(2*len(unique_groups))))
+        # unique_groups = np.delete(unique_groups,
+        #                           np.where(group_counts < len(X)/(2*len(unique_groups))))
         combi = combinations(range(len(unique_groups)), self.n_groups)
         for indices in combi:
             test_index = np.zeros(_num_samples(X), dtype=np.bool)
             for l in unique_groups[np.array(indices)]:
                 test_index[groups == l] = True
-            yield test_index
+
+            if len(test_index) > len(X)/(2*len(unique_groups)):
+                yield test_index
 
 # Unused not working
     def get_n_splits(self, X, y, groups):
