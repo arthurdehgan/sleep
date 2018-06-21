@@ -42,7 +42,7 @@ def ttest_perm_unpaired(cond1, cond2, n_perm=0, correction='maxstat',
 
     perm_t = perm_test(cond1, cond2, n_perm, equal_var, n_jobs=n_jobs)
 
-    pval = compute_pvalues(tval, perm_t, two_tailed)
+    pval = compute_pvalues(tval, perm_t, two_tailed, correction=correction)
 
     return tval, pval
 
