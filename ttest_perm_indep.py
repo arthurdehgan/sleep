@@ -61,7 +61,8 @@ def ttest_perm_unpaired(cond1, cond2, n_perm=0, correction='maxstat',
     return tval, pval
 
 
-def my_combinations(iterable, r, limit=None):
+def _combinations(iterable, r, limit=None):
+    '''combinations generator'''
     i = 0
     for e in combinations(iterable, r):
         yield e
@@ -70,7 +71,8 @@ def my_combinations(iterable, r, limit=None):
             break
 
 
-def do_ttest_perm(data, index, equal_var):
+def _ttest_perm(data, index, equal_var):
+    '''ttest with the permutation index'''
     index = list(index)
     index_comp = list(set(range(len(data))) - set(index))
     perm_mat = np.vstack((data[index], data[index_comp]))
@@ -89,6 +91,9 @@ def perm_test(cond1, cond2, n_perm, equal_var, n_jobs):
         n_perm: int, number of permutations to do, the more the better.
 
         equal_var: bool, see scipy.stats.ttest_ind.
+
+        n_jobs: int, Number of cores used to computer permutations in
+                parallel (-1 uses all cores and will be faster)
 
     Returns:
         perm_t: list of permutation t-statistics
@@ -111,16 +116,16 @@ def perm_test(cond1, cond2, n_perm, equal_var, n_jobs):
     # else:
         # print("{} permutations will be done".format(n_perm))
 
-    perms_index = my_combinations(range(n_samples), len(cond1), n_perm)
-    perm_t = Parallel(n_jobs=n_jobs)(delayed(do_ttest_perm)
+    perms_index = _combinations(range(n_samples), len(cond1), n_perm)
+    perm_t = Parallel(n_jobs=n_jobs)(delayed(_ttest_perm)
                                      (full_mat, index, equal_var)
                                      for index in perms_index)
 
     return perm_t[1:]  # the first perm is not a permutation
 
 
-def compute_pvalues(tval, perm_t, two_tailed, correction, method):
-    """computes pvalues without any correction.
+def compute_pvalues(tval, perm_t, two_tailed, correction):
+    """computes pvalues.
 
     Parameters:
         tstat: computed t-statistics
@@ -133,14 +138,8 @@ def compute_pvalues(tval, perm_t, two_tailed, correction, method):
                     pvalues. If None, no correction will be done
                     Options are 'maxstat', 'fdr', 'bonferroni', None
 
-        method : 'indep' | 'negcorr'
-                Necessary only for fdr correction.
-                Implements Benjamini/Hochberg method if 'indep' or
-                Benjamini/Yekutieli if 'negcorr'.
-
     Returns:
-        pvalues: list if two_tailed = False
-                 pvalues after permutation test
+        pvalues: list of pvalues after permutation test
     """
     scaling = len(perm_t)
     perm_t = np.array(perm_t)
@@ -166,6 +165,23 @@ def compute_pvalues(tval, perm_t, two_tailed, correction, method):
 
 
 def pvalues_correction(pvalues, correction, method):
+    """computes corrected pvalues from pvalues.
+
+    Parameters:
+        pvalues: list, list of pvalues.
+
+        correction: string, None, the choice of correction to compute
+                    pvalues. If None, no correction will be done
+                    Options are 'maxstat', 'fdr', 'bonferroni', None
+
+        method : 'indep' | 'negcorr'
+                Necessary only for fdr correction.
+                Implements Benjamini/Hochberg method if 'indep' or
+                Benjamini/Yekutieli if 'negcorr'.
+
+    Returns:
+        pvalues: list of corrected pvalues
+    """
     if correction == 'bonferroni':
         pvalues *= float(np.array(pvalues).size)
 
