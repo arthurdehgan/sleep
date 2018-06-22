@@ -5,7 +5,7 @@ Computes pvalues and saves them in a mat format with the decoding accuracies.
 Author: Arthur Dehgan
 '''
 from time import time
-from joblib import Parallel, delayed
+# from joblib import Parallel, delayed
 import numpy as np
 from numpy.random import permutation
 from scipy.io import savemat, loadmat
@@ -15,7 +15,7 @@ from utils import StratifiedLeave2GroupsOut, elapsed_time, create_groups
 from params import SAVE_PATH, LABEL_PATH, path, CHANNEL_NAMES,\
                    WINDOW, OVERLAP, STATE_LIST, FREQ_DICT
 
-N_PERMUTATIONS = 1000
+N_PERMUTATIONS = 999
 SAVE_PATH = SAVE_PATH / 'psd'
 SOLVER = 'svd'  # 'svd' 'lsqr'
 
@@ -27,8 +27,8 @@ def classification(state, elec):
     for key in FREQ_DICT:
         print(state, elec, key)
         results_file_path = SAVE_PATH / 'results/{}_solver'.format(SOLVER) /\
-                            'perm_PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
-                                state, key, elec, WINDOW, OVERLAP)
+            'perm_PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
+                state, key, elec, WINDOW, OVERLAP)
         if not path(results_file_path).isfile():
             # print('\nloading PSD for {} frequencies'.format(key))
             data_file_path = SAVE_PATH /\
@@ -70,7 +70,7 @@ def classification(state, elec):
 
             for score in scores:
                 if good_score <= score:
-                    pvalue += 1/N_PERMUTATIONS
+                    pvalue += 1/(N_PERMUTATIONS)
 
             data = {'score': good_score,
                     'pscore': scores,

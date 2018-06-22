@@ -8,18 +8,21 @@ import matplotlib.pyplot as plt
 plt.switch_backend('agg')
 
 DATA_PATH = SAVE_PATH / 'psd'
-RESULTS_PATH = DATA_PATH / 'results'
+TTEST_RESULTS_PATH = DATA_PATH / 'results'
+solver = 'svd'
+RESULTS_PATH = DATA_PATH / 'results/' + solver + '_solver'
 POS_FILE = SAVE_PATH / '../Coord_EEG_1020.mat'
 SENSORS_POS = loadmat(POS_FILE)['Cor']
-FREQS = ['Delta', 'Theta', 'Alpha', 'Sigma', 'Beta', 'Gamma1', 'Gamma2']
+# FREQS = ['Delta', 'Theta', 'Alpha', 'Sigma', 'Beta', 'Gamma1', 'Gamma2']
+FREQS = ['Delta', 'Theta', 'Alpha', 'Sigma', 'Beta']
 WINDOW = 1000
 OVERLAP = 0
-p = .05
+p = .001
 
 for stage in STATE_LIST:
 
     k, j = 1, 1
-    fig = plt.figure(figsize=(16, 18))
+    fig = plt.figure(figsize=(14, 12))
     for freq in FREQS:
 
         scores, pvalues = [], []
@@ -45,11 +48,10 @@ for stage in STATE_LIST:
             ndreamer.append(np.mean([e.ravel().mean() for e in PSD[18:]]))
             dreamer.append(np.mean([e.ravel().mean() for e in PSD[:18]]))
 
-        ttest = loadmat(RESULTS_PATH /
+        ttest = loadmat(TTEST_RESULTS_PATH /
                         'ttest_perm_{}_{}.mat'.format(stage, freq))
-        tt_pvalues_r = ttest['p_right'][0]
-        tt_pvalues_l = ttest['p_left'][0]
-        t_values = zscore(ttest['t_values'][0])
+        tt_pvalues = ttest['p_values'].ravel()
+        t_values = zscore(ttest['t_values'].ravel())
         dreamer = np.asarray(dreamer)
         ndreamer = np.asarray(ndreamer)
         DA = np.asarray(scores)
@@ -60,8 +62,7 @@ for stage in STATE_LIST:
 
         da_mask = np.full((len(CHANNEL_NAMES)), False, dtype=bool)
         tt_mask = np.full((len(CHANNEL_NAMES)), False, dtype=bool)
-        tt_mask[tt_pvalues_r <= 0.0005] = True
-        tt_mask[tt_pvalues_l <= 0.0005] = True
+        tt_mask[tt_pvalues <= p] = True
         da_mask[da_pvalues <= p] = True
         mask_params = dict(marker='*', markerfacecolor='white', markersize=9,
                            markeredgecolor='white')
@@ -72,10 +73,10 @@ for stage in STATE_LIST:
                  'cbarlim': [min(ndreamer), max(ndreamer)], 'data': ndreamer},
                 {'name': 'Relative Power Changes', 'cmap': 'inferno',
                  'mask': None, 'cbarlim': [min(RPC), max(RPC)], 'data': RPC},
-                {'name': 'ttest permutations p<0.001', 'data': t_values,
+                {'name': 'ttest permutations p<{}'.format(p), 'data': t_values,
                  'cmap': 'viridis', 'mask': tt_mask,
                  'cbarlim': [min(t_values), max(t_values)]},
-                {'name': 'Decoding Accuracies', 'cmap': 'viridis',
+                {'name': 'Decoding Accuracies p<{}'.format(p), 'cmap': 'viridis',
                  'mask': da_mask, 'cbarlim': [50, 65], 'data': DA}]
 
         for i, subset in enumerate(data):
@@ -90,14 +91,14 @@ for stage in STATE_LIST:
                                  contours=0)
             fig.colorbar(ax, shrink=.65)
 
-        fig.text(0.004, 1 - (2*j-1)/14,
-                 freq, va='center', rotation=90, size='x-large')
+        # fig.text(0.004, 1 - (j-.5)/len(FREQS),
+        #          freq, va='center', rotation=90, size='x-large')
         j += 1
         k += 5
 
-    for i, subset in enumerate(data):
-        fig.text(i/5 + .08, .008, subset['name'], ha='center', size='x-large')
+    # for i, subset in enumerate(data):
+    #     fig.text(i/5 + .08, .008, subset['name'], ha='center', size='x-large')
     plt.tight_layout()
     # plt.suptitle('Topomap {}'.format(stage))
-    file_name = 'topomap_{}'.format(stage)
-    plt.savefig(SAVE_PATH / '../figures' / file_name, dpi=300)
+    file_name = 'topomap_{}_{}_p{}'.format(solver, stage, str(p)[2:])
+    plt.savefig(SAVE_PATH / '../figures' / file_name, dpi=200)

@@ -1,7 +1,6 @@
 '''Generate topomaps'''
 from mne.viz import plot_topomap
 from scipy.io import loadmat
-from scipy.stats import zscore
 from params import SAVE_PATH, STATE_LIST, CHANNEL_NAMES
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,7 +13,7 @@ SENSORS_POS = loadmat(POS_FILE)['Cor']
 # FREQS = ['Delta', 'Theta', 'Alpha', 'Sigma', 'Beta', 'Gamma1', 'Gamma2']
 WINDOW = 1000
 OVERLAP = 0
-p = .01
+p = .001
 
 for stage in STATE_LIST:
 
@@ -53,5 +52,6 @@ for stage in STATE_LIST:
                          contours=0)
     fig.colorbar(ax, shrink=.65)
 
-    file_name = 'topomap_multifeature_{}_p{}'.format(stage, str(p)[2:])
-    plt.savefig(SAVE_PATH / '../figures' / file_name, dpi=200)
+    file_name = 'topomap_all_multifeature_{}_p{}'.format(stage, str(p)[2:])
+    savename = SAVE_PATH / '../figures' / file_name
+    plt.savefig(savename, dpi=200)

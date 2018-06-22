@@ -31,7 +31,7 @@ name = 'moy_cosp'
 # name = 'ft_imcoh'
 SAVE_PATH = SAVE_PATH / name
 FULL_TRIAL = name.startswith('ft') or name.startswith('moy')
-N_PERM = 1000
+N_PERM = 999
 
 
 def cross_val(train_index, test_index, clf, X, y):
@@ -74,27 +74,17 @@ def main(state, key):
             state, key, WINDOW, OVERLAP)
 
     if not file_path.isfile():
-        pattern = name + '_{}_{}_{}_{:.2f}.mat'.format(
+        file_name = name + '_{}_{}_{}_{:.2f}.mat'.format(
             state, key, WINDOW, OVERLAP)
-        data_file_path = SAVE_PATH / pattern
+        data_file_path = SAVE_PATH / file_name
         if data_file_path.isfile():
             data = loadmat(data_file_path)['data']
-            # data = data.astype(np.float32)
+
             if not FULL_TRIAL:
                 data = data.ravel()
                 data = np.concatenate((data[range(len(data))]))
                 if len(data.shape) > 3:
                     data = data.mean(axis=-1)
-
-            # for trial in range(len(data)):
-            #     for i in range(19):
-            #         for j in range(19):
-            #             dat = data[trial,i,j]
-            #             if np.isfinite(dat):
-            #                 data[trial,i,j] = 0
-            #             else:
-            #                 data[trial,i,j] = abs(dat)
-            # print(data[trial])
 
             cross_val = StratifiedLeave2GroupsOut()
             lda = LDA()
@@ -119,6 +109,7 @@ def main(state, key):
                                          groups=groups, n_jobs=-1)[0]))
 
                 save['pvalue'] = compute_pval(accuracy.mean(), perm_scores)
+
             savemat(file_path, save)
 
             print('accuracy for %s frequencies : %0.2f (+/- %0.2f)' %

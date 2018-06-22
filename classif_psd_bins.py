@@ -10,7 +10,7 @@ N_FBIN = 45
 WINDOW = 1000
 OVERLAP = 0
 N_PERMUTATIONS = 1000
-SLEEP_LIST = ['S1', 'S2', 'SWS', 'Rem', 'NREM']
+SLEEP_LIST = ['S1', 'S2', 'SWS', 'Rem']
 SAVE_PATH = SAVE_PATH / 'psd/results'
 SUB_LIST = SUBJECT_LIST
 PERM_TEST = False
@@ -22,13 +22,7 @@ if __name__ == '__main__':
             y = loadmat(LABEL_PATH / state + '_labels.mat')['y'].ravel()
             y, groups = create_groups(y)
 
-            fbin_not_done = []
-            #for fbin in range(N_FBIN):
-            #    results_file_path = SAVE_PATH / \
-            #            'perm_PSD_bin_{}_{}_{}_{}_{:.2f}.mat'.format(
-            #                fbin, state, elec, WINDOW, OVERLAP)
-            #    if not path(results_file_path).isfile():
-            #        fbin_not_done.append(fbin)
+            fbin_not_done = list(range(45))
 
             dataset = []
             for sub in SUB_LIST:

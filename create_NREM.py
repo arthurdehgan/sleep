@@ -1,9 +1,9 @@
 from scipy.io import loadmat, savemat
-from params import CHANNEL_NAMES, FREQ_DICT
+from params import CHANNEL_NAMES, FREQ_DICT, SUBJECT_LIST
 import numpy as np
 
-DP = '/home/arthur/Documents/sleep/features/crosspectre/'
-# DP = '/home/arthur/Documents/sleep/features/psd/'
+# DP = '/home/arthur/Documents/sleep/features/crosspectre/'
+DP = '/home/arthur/Documents/sleep/features/psd/'
 # DP = '/home/arthur/Documents/sleep/features/covariance/'
 LP = '/home/arthur/Documents/sleep/labels/'
 STATE_LIST = ['S1', 'S2', 'SWS']
@@ -30,35 +30,34 @@ FULL_TRIAL = False
 
 
 for key in FREQ_DICT:
-    # for elec in CHANNEL_NAMES:
-    data = []
-    for state in STATE_LIST:
-        # file_name = DP + 'PSD_{}_{}_{}_1000_0.00.mat'.format(state, key, elec)
-        file_name = DP + 'ft_cosp_{}_{}_1000_0.00.mat'.format(state, key)
-        # file_name = DP + 'cov_{}.mat'.format(state)
-        try:
-            if FULL_TRIAL:
-                temp_data = loadmat(file_name)['data']
-            else:
-                temp_data = loadmat(file_name)['data'].ravel()
-        except IOError:
-            print('error loading:', file_name)
-        # temp_data = [dat.ravel() for dat in temp_data]
-        data.append(temp_data)
-    if FULL_TRIAL:
-        data = np.array(data)
-        data = data.mean(axis=0)
-        savemat(DP + 'ft_cosp_NREM_{}_1000_0.00.mat'.format(key), {'data': data})
-    else:
-        dataf = []
-        for i in range(len(data[0])):
-            temp = []
-            for k in range(len(STATE_LIST)):
-                temp.append(data[k][i])
-            temp = np.concatenate(temp)
-            dataf.append(temp)
-        dataf = np.array(dataf)
-        savemat(DP + 'ft_cosp_NREM_{}_1000_0.00.mat'.format(key), {'data': dataf})
-    # savemat(DP + 'PSD_NREM_{}_{}_1000_0.00.mat'.format(key, elec), {'data': dataf})
-    # savemat(DP + 'cov_NREM.mat', {'data': dataf})
+    print(key)
+    for elec in CHANNEL_NAMES:
+        print(elec)
+        data = []
+        for state in STATE_LIST:
+            file_name = DP + 'PSD_{}_{}_{}_1000_0.00.mat'.format(state, key, elec)
+            # file_name = DP + 'ft_cosp_{}_{}_1000_0.00.mat'.format(state, key)
+            # file_name = DP + 'cov_{}.mat'.format(state)
+            try:
+                if FULL_TRIAL:
+                    temp_data = loadmat(file_name)['data']
+                else:
+                    temp_data = loadmat(file_name)['data'].ravel()
+            except IOError:
+                print('error loading:', file_name)
+            data.append(temp_data)
+
+        if FULL_TRIAL:
+            data = np.array(data)
+            data = data.mean(axis=0)
+            savemat(DP + 'PSDs_{}_{}_{}_1000_0.00.mat'.format(state, elec), {'data': data})
+
+        else:
+            dataf = []
+            for i in range(len(SUBJECT_LIST)):
+                dataf.append(np.concatenate(([data[k][i].ravel() for k in range(len(STATE_LIST))])))
+            dataf = np.array(dataf)
+            # savemat(DP + 'ft_cosp_NREM_{}_1000_0.00.mat'.format(key), {'data': dataf})
+            savemat(DP + 'PSD_NREM_{}_{}_1000_0.00.mat'.format(key, elec), {'data': dataf})
+        # savemat(DP + 'cov_NREM.mat', {'data': dataf})
 

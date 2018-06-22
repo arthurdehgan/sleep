@@ -33,7 +33,7 @@ MINMAX = [30, 90]  # Minimum and maximum of x axis scale
 Y_LABEL = 'Decoding accuracies'  # legend for the y axis
 
 COLORS = ['#DC9656', '#D8D8D8', '#86C1B9', '#BA8BAF',
-          '#7CAFC2', '#F7CA88', '#A1B56C', '#AB4642']  # hex code of bar COLORS
+          '#7CAFC2', '#A1B56C', '#AB4642']  # hex code of bar COLORS '#F7CA88'
 WIDTH = .90  # WIDTH of the bars, change at your own risks, it might break
 GRAPH_TITLE = "Titre du barplot"  # Graph title
 FILE_NAME = "nom_fichier.png"  # File name when saved
@@ -65,5 +65,6 @@ ax.set_xticks([ceil(nb_labels/2)+i*(1+nb_labels) for i in range(len(GROUPS))])
 ax.legend(bars, labels, loc='upper center', bbox_to_anchor=(0.5, -0.05),
           fancybox=True, shadow=True, ncol=len(labels))
 
+print(FILE_NAME)
 plt.savefig(FILE_NAME, dpi=RESOLUTION)
-plt.show()
+# plt.show()

@@ -26,7 +26,7 @@ if prefix != '':
 
 
 def cross_val(train_index, test_index, clf, X, y):
-    clf_copy = clf
+    clf_copy = clf.clone()
     x_train, x_test = X[train_index], X[test_index]
     y_train, y_test = y[train_index], y[test_index]
     clf_copy.fit(x_train, y_train)
@@ -67,6 +67,7 @@ def main(state):
         data_file_path = path(SAVE_PATH / prefix + 'cov_{}.mat'.format(state))
         if data_file_path.isfile():
             data = loadmat(data_file_path)['data']
+
             if not FULL_TRIAL:
                 data = data.ravel()
                 data = np.concatenate((data[range(len(data))]))
@@ -108,8 +109,6 @@ def main(state):
 
 if __name__ == '__main__':
     TIMELAPSE_START = time()
-    # Parallel(n_jobs=-1)(delayed(main)(state, key)
-    #                    for state in STATE_LIST)
     for state in STATE_LIST:
         main(state)
     print('total time lapsed : %s' % elapsed_time(TIMELAPSE_START, time()))
