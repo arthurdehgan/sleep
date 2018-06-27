@@ -331,6 +331,19 @@ def elapsed_time(t0, t1):
     return Time
 
 
+def prepare_data(dico, key='data', n_trials=None):
+    data = dico[key].ravel()
+    final_data = []
+    for submat in data:
+        submat = submat.ravel()
+        if n_trials is not None:
+            index = np.random.choice(range(submat), n_trials, replace=False)
+            submat = submat[index]
+        final_data += submat.tolist()
+
+    return final_data
+
+
 def load_samples(data_path, subjectNumber, sleep_state, elec=None):
     """Load the samples of a subject for a sleepstate."""
     tempFileName = data_path / "%s_s%i.mat" % (sleep_state, subjectNumber)
