@@ -3,9 +3,12 @@ from scipy.io import loadmat, savemat
 import numpy as np
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
+from sklearn.base import clone
 from sklearn.utils import indexable
 from sklearn.utils.validation import check_array, _num_samples
-from itertools import combinations
+from sklearn.metrics import accuracy_score, roc_auc_score
+from joblib import Parallel, delayed
+from itertools import combinations, permutations
 from pyriemann.classification import MDM, TSclassifier
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.svm import SVC
@@ -14,6 +17,89 @@ from sklearn.covariance import oas, ledoit_wolf, fast_mcd, empirical_covariance
 from sklearn.ensemble import RandomForestClassifier as RF
 from scipy.signal import welch
 from matplotlib import mlab
+
+
+def cross_val(train_index, test_index, estimator, X, y):
+    clf = clone(estimator)
+    x_train, x_test = X[train_index], X[test_index]
+    y_train, y_test = y[train_index], y[test_index]
+    clf.fit(x_train, y_train)
+    y_pred = clf.predict(x_test)
+    return y_pred, y_test
+
+
+def cross_val_scores(estimator, cv, X, y, groups=None, n_jobs=1):
+    clf = clone(estimator)
+    results = (Parallel(n_jobs=n_jobs)(
+        delayed(cross_val)(train_index, test_index, clf, X, y)
+        for train_index, test_index in cv.split(X=X, y=y, groups=groups)))
+
+    accuracy, auc_list = [], []
+    for test in results:
+        y_pred = test[0]
+        y_test = test[1]
+        acc = accuracy_score(y_test, y_pred)
+        auc = roc_auc_score(y_test, y_pred)
+        accuracy.append(acc)
+        auc_list.append(auc)
+    return accuracy, auc_list
+
+
+def _permutations(iterable, r, limit=None):
+    '''combinations generator'''
+    i = 0
+    for e in permutations(iterable, r):
+        yield e
+        i += 1
+        if limit is not None and i == limit:
+            break
+
+
+def permutation_test(estimator, cv, X, y, groups=None, n_perm=0, n_jobs=1):
+    perm_index = _permutations(range(len(y)), len(y), n_perm)
+    next(perm_index)  # first generated perm is not a permutation
+    acc_pscores, auc_pscores = [], []
+    for perm in perm_index:
+        clf = clone(estimator)
+        y_perm = y[list(perm)]
+        perm_acc, perm_auc = cross_val_scores(clf, cv, X,
+                                              y_perm, groups, n_jobs)
+        acc_pscores.append(np.mean(perm_acc))
+        auc_pscores.append(np.mean(perm_auc))
+
+    return acc_pscores, auc_pscores
+
+
+def classification(estimator, cv, X, y, groups=None, perm=None, n_jobs=1):
+    y = np.asarray(y)
+    X = np.asarray(X)
+    if len(X) != len(y):
+        raise ValueError('Dimension mismatch for X and y : {}, {}'.format(len(X), len(y)))
+    if groups is not None:
+        try:
+            if len(y) != len(groups):
+                raise ValueError('dimension mismatch for groups and y')
+        except TypeError:
+            print('Error in classification: y or',
+                  'groups is not a list or similar structure')
+            exit()
+    clf = clone(estimator)
+    accuracies, aucs = cross_val_scores(clf, cv, X, y, groups, n_jobs)
+    acc_score = np.mean(accuracies)
+    auc_score = np.mean(aucs)
+    save = {'acc_score': acc_score, 'auc_score': auc_score,
+            'acc': accuracies, 'auc': aucs}
+    if perm is not None:
+        acc_pscores, auc_pscores = permutation_test(clf, cv, X, y,
+                                                    groups, perm, n_jobs)
+        acc_pvalue = compute_pval(acc_score, acc_pscores)
+        auc_pvalue = compute_pval(auc_score, auc_pscores)
+
+        save.update({'auc_pvalue': auc_pvalue, 'acc_pvalue': acc_pvalue,
+                     'auc_pscores': auc_pscores, 'acc_pscores': acc_pscores})
+
+    return save
+
 
 
 # Covariance code
@@ -333,15 +419,16 @@ def elapsed_time(t0, t1):
 
 def prepare_data(dico, key='data', n_trials=None):
     data = dico[key].ravel()
-    final_data = []
+    final_data = None
     for submat in data:
-        submat = submat.ravel()
+        if submat.shape[0] == 1:
+            submat = submat.ravel()
         if n_trials is not None:
-            index = np.random.choice(range(submat), n_trials, replace=False)
+            index = np.random.choice(range(len(submat)), n_trials, replace=False)
             submat = submat[index]
-        final_data += submat.tolist()
+        final_data = submat if final_data is None else np.concatenate((submat, final_data))
 
-    return final_data
+    return np.asarray(final_data)
 
 
 def load_samples(data_path, subjectNumber, sleep_state, elec=None):

@@ -6,27 +6,36 @@ Author: Arthur Dehgan
 '''
 from time import time
 # from joblib import Parallel, delayed
-import numpy as np
 import pandas as pd
-from numpy.random import permutation
+import numpy as np
+from itertools import product
 from scipy.io import savemat, loadmat
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
-from sklearn.model_selection import cross_val_score
-from utils import StratifiedLeave2GroupsOut, elapsed_time, create_groups, prepare_data
+from utils import StratifiedLeave2GroupsOut, elapsed_time, create_groups,\
+                  prepare_data, classification
 from params import SAVE_PATH, LABEL_PATH, path, CHANNEL_NAMES,\
                    WINDOW, OVERLAP, STATE_LIST, FREQ_DICT
 
-N_PERMUTATIONS = 999
+# prefix = 'perm'
+# prefix = 'classif'
+prefix = 'classif_subsamp'
 SAVE_PATH = SAVE_PATH / 'psd'
 SOLVER = 'svd'  # 'svd' 'lsqr'
-SUBSAMPLE = True
-PERM = False
+SUBSAMPLE = prefix.endswith('subsamp')
+PERM = prefix.startswith('perm')
+if PERM:
+    N_PERM = 999
+else:
+    N_PERM = None
+N_TRIALS = None
 
 
-def classification(state, elec):
+def main(state, elec):
+    global N_TRIALS, SUBSAMPLE, SAVE_PATH
     if SUBSAMPLE:
         info_data = pd.read_csv('info_data.csv')[STATE_LIST]
-        N_TRIALS = info_data.min().min()
+        if N_TRIALS is None:
+            N_TRIALS = info_data.min().min()
         N_SUBS = len(info_data) - 1
         groups = [i for _ in range(N_TRIALS) for i in range(N_SUBS)]
         N_TOTAL = N_TRIALS * N_SUBS
@@ -38,7 +47,7 @@ def classification(state, elec):
     for key in FREQ_DICT:
         print(state, elec, key)
 
-        file_name = 'classif_subsamp_PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
+        file_name = prefix + '_PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
                 state, key, elec, WINDOW, OVERLAP)
         # file_name = 'perm_PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
         #         state, key, elec, WINDOW, OVERLAP)
@@ -50,7 +59,7 @@ def classification(state, elec):
                     'PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
                         state, key, elec, WINDOW, OVERLAP)
             if path(data_file_path).isfile():
-                data = prepare_data(loadmat(data_file_path))
+                data = prepare_data(loadmat(data_file_path), n_trials=N_TRIALS)
             else:
                 print(path(data_file_path).name + ' Not found')
                 print('please run "computePSD.py" and\
@@ -61,51 +70,22 @@ def classification(state, elec):
             data = np.array(data).reshape(len(data), 1)
             sl2go = StratifiedLeave2GroupsOut()
             clf = LDA(solver=SOLVER)
-            pvalue = 0
-            good_score = cross_val_score(cv=sl2go,
-                                         estimator=clf,
-                                         X=data, y=labels,
-                                         groups=groups,
-                                         n_jobs=-1).mean()
-            data = {'score': good_score}
+            save = classification(clf, sl2go, data, labels, groups,
+                                  N_PERM, n_jobs=-1)
 
             if PERM:
-                pscores = []
-                for _ in range(N_PERMUTATIONS):
-                    clf = LDA()
-                    perm_set = permutation(len(labels))
-                    labels_perm = labels[perm_set]
-                    groups_perm = groups[perm_set]
-                    pscores.append(cross_val_score(cv=sl2go,
-                                                  estimator=clf,
-                                                  X=data, y=labels_perm,
-                                                  groups=groups_perm,
-                                                  n_jobs=-1).mean())
-
-                for score in pscores:
-                    if good_score <= score:
-                        pvalue += 1/(N_PERMUTATIONS)
-
-                data['pvalue'] = pvalue
-                data['pscore'] = pscores
-
                 print('{} : {:.2f} significatif a p={:.4f}'.format(
-                    key, good_score, pvalue))
-
+                    key, save['acc_score'], save['acc_pvalue']))
             else:
-                print('{} : {:.2f}'.format(key, good_score))
+                print('{} : {:.2f}'.format(key, save['acc_score']))
 
-            savemat(results_file_path, data)
+            savemat(results_file_path, save)
 
 
 if __name__ == '__main__':
     T0 = time()
 
-    # Parallel(n_jobs=-1)(delayed(classification)(state,
-    #                                             elec)
-    #                     for state in STATE_LIST for elec in CHANNEL_NAMES)
-    for state in STATE_LIST:
-        for elec in CHANNEL_NAMES:
-            classification(state, elec)
+    for state, elec in product(STATE_LIST, CHANNEL_NAMES):
+            main(state, elec)
 
     print('total time lapsed : {}'.format(elapsed_time(T0, time())))
