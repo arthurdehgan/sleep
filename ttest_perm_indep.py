@@ -52,8 +52,7 @@ def ttest_perm_unpaired(cond1, cond2, n_perm=0, correction='maxstat',
 
     perm_t = perm_test(cond1, cond2, n_perm, equal_var, n_jobs=n_jobs)
 
-    pval = compute_pvalues(tval, perm_t, two_tailed,
-                           correction=correction, method=method)
+    pval = compute_pvalues(tval, perm_t, two_tailed, correction=correction)
 
     if correction in ['bonferroni', 'fdr']:
         pval = pvalues_correction(pval, correction, method)
@@ -214,6 +213,7 @@ if __name__ == '__main__':
     cond1 = np.random.randn(10, 10)
     cond2 = np.random.randn(10, 10)
     tval, pval = ttest_perm_unpaired(cond1, cond2, n_perm=100)
+    tval4, pval4 = ttest_perm_unpaired(cond1, cond2, n_perm=100, correction='maxstat')
     tval2, pval2 = ttest_perm_unpaired(cond1, cond2, n_perm=100, correction='bonferroni')
     tval3, pval3 = ttest_perm_unpaired(cond1, cond2, n_perm=100, correction='fdr')
     print(pval ,pval2, pval3, sep='\n')
