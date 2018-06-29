@@ -70,8 +70,12 @@ def main(state, elec):
             data = np.array(data).reshape(len(data), 1)
             sl2go = StratifiedLeave2GroupsOut()
             clf = LDA(solver=SOLVER)
-            save = classification(clf, sl2go, data, labels, groups,
-                                  N_PERM, n_jobs=-1)
+            accuracies = []
+            for _ in range(100):
+                save = classification(clf, sl2go, data, labels, groups,
+                                      N_PERM, n_jobs=-1)
+                accuracies.append(save['acc_score'])
+            save['reps'] = accuracies
 
             if PERM:
                 print('{} : {:.2f} significatif a p={:.4f}'.format(
