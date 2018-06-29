@@ -15,7 +15,6 @@ from params import SAVE_PATH, path, CHANNEL_NAMES,\
                    WINDOW, OVERLAP, STATE_LIST, FREQ_DICT
 
 N_PERMUTATIONS = 1000
-N_REP = 100
 SAVE_PATH = SAVE_PATH / 'psd'
 FREQS = np.array(['delta', 'theta', 'alpha', 'sigma',
                   'beta', 'gamma1', 'gamma2'])
@@ -42,8 +41,6 @@ def classification(state, elec):
         'EFS_NoGamma_{}_{}_{}_{:.2f}.mat'.format(state, elec, WINDOW, OVERLAP)
     if not path(results_file_path).isfile():
         # print('\nloading PSD for {} frequencies'.format(key))
-        best_scores = []
-        best_freqs = []
         for key in FREQ_DICT:
             data_file_path = SAVE_PATH /\
                     'PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
@@ -64,35 +61,44 @@ def classification(state, elec):
                       running this script')
 
         lil_labels = [0]*18 + [1]*18
+        lil_groups = list(range(36))
+        sl2go = StratifiedLeave2GroupsOut()
 
-        for rep in range(N_REP):
-            X_feature, X_classif, y_feature, y_classif = train_test_split(
-                final_data, lil_labels, test_size=.5,
-                stratify=lil_labels, random_state=rep)
+        best_freqs = []
+        best_scores = []
+        test_scores = []
+        for train_subjects, test_subjects in sl2go.split(final_data, lil_labels, lil_groups):
+            X_feature, X_classif = final_data[train_subjects], final_data[test_subjects]
+            y_feature, y_classif = lil_labels[train_subjects], lil_labels[test_subjects]
 
             labels = [np.array([label]*X_feature[i].shape[1])
                       for i, label in enumerate(y_feature)]
             labels, groups = create_groups(labels)
             X_feature = np.concatenate(X_feature[:], axis=1).T
 
-            sl2go = StratifiedLeave2GroupsOut()
+            nested_sl2go = StratifiedLeave2GroupsOut()
             clf = LDA()
             f_select = EFS(estimator=clf,
-                           max_features=7,
-                           cv=sl2go,
+                           max_features=X_feature.shape[-1],
+                           cv=nested_sl2go,
                            n_jobs=-1)
 
             f_select = f_select.fit(X_feature,
                                     labels,
                                     groups)
 
-            best_scores.append(f_select.best_score_)
             best_idx = f_select.best_idx_
             best_freqs.append(FREQS[list(best_idx)])
+            best_scores.append(f_select.best_score_)
 
-        score = np.mean(best_scores)
+            test_clf = LDA()
+            test_score = test_clf.score(X_classif, y_classif)
+            test_scores.append(test_score)
+
+        score = np.mean(test_scores)
         data = {'score': score,
-                'scores': best_scores,
+                'train_scores': best_scores,
+                'test_scores': test_scores,
                 'freqs': best_freqs}
         print('\nBest combi: {} - {:.2f}'.format(best_freqs, score))
 
@@ -102,11 +108,7 @@ def classification(state, elec):
 if __name__ == '__main__':
     T0 = time()
 
-    # Parallel(n_jobs=-1)(delayed(classification)(state,
-    #                                             elec)
-    #                     for state in STATE_LIST for elec in CHANNEL_NAMES)
-    for state in STATE_LIST:
-        for elec in CHANNEL_NAMES:
-            classification(state, elec)
+    for state, elec in product(STATE_LIST, CHANNEL_NAMES):
+        main(state, elec)
 
     print('total time lapsed : {}'.format(elapsed_time(T0, time())))
