@@ -4,50 +4,26 @@ Outputs one file per freq x state
 
 Author: Arthur Dehgan"""
 from time import time
-from path import Path as path
-from joblib import Parallel, delayed
 from scipy.io import savemat, loadmat
+import pandas as pd
 import numpy as np
-from numpy.random import permutation
-from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from pyriemann.classification import TSclassifier
 from utils import create_groups, StratifiedLeave2GroupsOut, elapsed_time,\
-                  compute_pval
+                  prepare_data, classification
 from params import SAVE_PATH, STATE_LIST, LABEL_PATH
 # import pdb
 
-FULL_TRIAL = False
+name = 'moy_cov'
+prefix = 'perm_'
+FULL_TRIAL = name.startswith('ft') or name.startswith('moy')
+SUBSAMPLE = name.startswith('subsamp')
 SAVE_PATH = SAVE_PATH / 'cov/'
-N_PERM = 999
-prefix = 'moy_'
-if prefix != '':
-    FULL_TRIAL = True
-
-
-def cross_val(train_index, test_index, clf, X, y):
-    clf_copy = clf.clone()
-    x_train, x_test = X[train_index], X[test_index]
-    y_train, y_test = y[train_index], y[test_index]
-    clf_copy.fit(x_train, y_train)
-    y_pred = clf.predict(x_test)
-    return y_pred, y_test
-
-
-def cross_val_scores(clf, cv, X, y, groups=None, n_jobs=-1):
-    results = (Parallel(n_jobs=n_jobs)(
-        delayed(cross_val)(train_index, test_index, clf, X, y)
-        for train_index, test_index in cv.split(X=X, y=y, groups=groups)))
-
-    accuracy, auc_list = [], []
-    for test in results:
-        y_pred = test[0]
-        y_test = test[1]
-        acc = accuracy_score(y_test, y_pred)
-        auc = roc_auc_score(y_test, y_pred)
-        accuracy.append(acc)
-        auc_list.append(auc)
-    return accuracy, auc_list
+PERM = True if FULL_TRIAL else False
+if PERM:
+    N_PERM = 999
+else:
+    N_PERM = None
 
 
 def main(state):
@@ -56,52 +32,41 @@ def main(state):
     if FULL_TRIAL:
         labels = np.concatenate((np.ones(18,), np.zeros(18,)))
         groups = range(36)
+    elif SUBSAMPLE:
+        info_data = pd.read_csv('info_data.csv')[STATE_LIST]
+        N_TRIALS = info_data.min().min()
+        N_SUBS = len(info_data) - 1
+        groups = [i for _ in range(N_TRIALS) for i in range(N_SUBS)]
+        N_TOTAL = N_TRIALS * N_SUBS
+        labels = [0 if i < N_TOTAL / 2 else 1 for i in range(N_TOTAL)]
     else:
         labels = loadmat(LABEL_PATH / state + '_labels.mat')['y'].ravel()
         labels, groups = create_groups(labels)
 
-    file_path = SAVE_PATH / 'results' /\
-        'classif_' + prefix + 'cov_{}.mat'.format(state)
+    save_file_path = SAVE_PATH / 'results' /\
+        prefix + name + '_{}.mat'.format(state)
 
-    if not file_path.isfile():
-        data_file_path = path(SAVE_PATH / prefix + 'cov_{}.mat'.format(state))
+    if not save_file_path.isfile():
+        data_file_path = SAVE_PATH / name + '_{}.mat'.format(state)
+
         if data_file_path.isfile():
-            data = loadmat(data_file_path)['data']
-
-            if not FULL_TRIAL:
-                data = data.ravel()
-                data = np.concatenate((data[range(len(data))]))
-                if len(data.shape) > 3:
-                    data = data.mean(axis=-1)
-
-            cross_val = StratifiedLeave2GroupsOut()
-            lda = LDA()
-            clf = TSclassifier(clf=lda)
-            accuracy, auc_list = cross_val_scores(clf, cross_val,
-                                                  data, labels, groups,
-                                                  n_jobs=-1)
-
-            save = {'data': accuracy, 'auc': auc_list}
-            accuracy = np.asarray(accuracy)
+            data = loadmat(data_file_path)
 
             if FULL_TRIAL:
-                perm_scores = []
-                for _ in range(N_PERM):
-                    clf = LDA()
-                    clf = TSclassifier(clf=lda)
-                    perm_set = permutation(len(labels))
-                    labels_perm = labels[perm_set]
-                    perm_scores.append(np.mean(
-                        cross_val_scores(clf, cross_val, data,
-                                         labels_perm, groups=groups,
-                                         n_jobs=-1)[0]))
+                data = data['data']
+            else:
+                data = prepare_data(data)
 
-                save['pvalue'] = compute_pval(accuracy.mean(), perm_scores)
+            sl2go = StratifiedLeave2GroupsOut()
+            lda = LDA()
+            clf = TSclassifier(clf=lda)
+            save = classification(clf, sl2go, data, labels,
+                                  groups, N_PERM, n_jobs=-1)
 
-            savemat(file_path, save)
+            savemat(save_file_path, save)
 
-            print('accuracy for state %s : %0.2f (+/- %0.2f)' %
-                  (state, accuracy.mean(), accuracy.std()))
+            print('accuracy for %s : %0.2f (+/- %0.2f)' %
+                  (state, save['acc_score'], np.std(save['acc'])))
 
         else:
             print(data_file_path.name + ' Not found')

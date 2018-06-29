@@ -4,7 +4,6 @@ Outputs one file per freq x state
 
 Author: Arthur Dehgan"""
 from time import time
-from joblib import Parallel, delayed
 from itertools import product
 from scipy.io import savemat, loadmat
 import pandas as pd
@@ -39,9 +38,9 @@ else:
     N_PERM = None
 
 
-def main(state, key):
+def main(state, freq):
     """Where the magic happens"""
-    print(state, key)
+    print(state, freq)
     if FULL_TRIAL:
         labels = np.concatenate((np.ones(18,), np.zeros(18,)))
         groups = range(36)
@@ -58,14 +57,16 @@ def main(state, key):
 
     file_path = SAVE_PATH / 'results' /\
         prefix + name + '_{}_{}_{}_{:.2f}.mat'.format(
-            state, key, WINDOW, OVERLAP)
+            state, freq, WINDOW, OVERLAP)
 
     if not file_path.isfile():
         file_name = name + '_{}_{}_{}_{:.2f}.mat'.format(
-            state, key, WINDOW, OVERLAP)
+            state, freq, WINDOW, OVERLAP)
         data_file_path = SAVE_PATH / file_name
+
         if data_file_path.isfile():
             data = loadmat(data_file_path)
+
             if FULL_TRIAL:
                 data = data['data']
             else:
@@ -74,12 +75,13 @@ def main(state, key):
             sl2go = StratifiedLeave2GroupsOut()
             lda = LDA()
             clf = TSclassifier(clf=lda)
-            save = classification(clf, sl2go, data, labels, groups, N_PERM, n_jobs=-1)
+            save = classification(clf, sl2go, data, labels,
+                                  groups, N_PERM, n_jobs=-1)
 
             savemat(file_path, save)
 
-            print('accuracy for %s frequencies : %0.2f (+/- %0.2f)' %
-                  (state, save['acc_score'], np.std(save['acc'])))
+            print('accuracy for %s %s : %0.2f (+/- %0.2f)' %
+                  (state, freq, save['acc_score'], np.std(save['acc'])))
 
         else:
             print(data_file_path.name + ' Not found')
@@ -87,6 +89,6 @@ def main(state, key):
 
 if __name__ == '__main__':
     TIMELAPSE_START = time()
-    for key, state in product(FREQ_DICT, STATE_LIST):
-            main(state, key)
+    for freq, state in product(FREQ_DICT, STATE_LIST):
+            main(state, freq)
     print('total time lapsed : %s' % elapsed_time(TIMELAPSE_START, time()))
