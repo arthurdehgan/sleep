@@ -14,8 +14,9 @@ from utils import create_groups, StratifiedLeave2GroupsOut, elapsed_time,\
 from params import SAVE_PATH, STATE_LIST, LABEL_PATH
 # import pdb
 
-name = 'moy_cov'
-prefix = 'perm_'
+# name = 'moy_cov'
+name = 'subsamp_cov'
+prefix = 'classif_'
 FULL_TRIAL = name.startswith('ft') or name.startswith('moy')
 SUBSAMPLE = name.startswith('subsamp')
 SAVE_PATH = SAVE_PATH / 'cov/'

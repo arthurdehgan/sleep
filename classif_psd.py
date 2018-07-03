@@ -18,7 +18,7 @@ from params import SAVE_PATH, LABEL_PATH, path, CHANNEL_NAMES,\
 
 # prefix = 'perm'
 # prefix = 'classif'
-prefix = 'classif_subsamp'
+prefix = 'perm_subsamp'
 SAVE_PATH = SAVE_PATH / 'psd'
 SOLVER = 'svd'  # 'svd' 'lsqr'
 SUBSAMPLE = prefix.endswith('subsamp')

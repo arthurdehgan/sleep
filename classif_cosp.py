@@ -16,11 +16,11 @@ from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW,\
                    OVERLAP, LABEL_PATH
 # import pdb
 
-prefix = 'perm_'
-# prefix = 'classif_'
-# name = 'subs_cosp'
+# prefix = 'perm_'
+prefix = 'classif_'
 # name = 'ft_cosp'
-name = 'moy_cosp'
+# name = 'moy_cosp'
+name = 'subsamp_cosp'
 # name = 'im_cosp'
 # name = 'wpli'
 # name = 'coh'
