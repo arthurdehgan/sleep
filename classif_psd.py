@@ -33,7 +33,7 @@ N_TRIALS = None
 def main(state, elec):
     global N_TRIALS, SUBSAMPLE, SAVE_PATH
     if SUBSAMPLE:
-        info_data = pd.read_csv('info_data.csv')[STATE_LIST]
+        info_data = pd.read_csv(SAVE_PATH / 'info_data.csv')[STATE_LIST]
         if N_TRIALS is None:
             N_TRIALS = info_data.min().min()
         N_SUBS = len(info_data) - 1
