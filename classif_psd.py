@@ -19,21 +19,21 @@ from params import SAVE_PATH, LABEL_PATH, path, CHANNEL_NAMES,\
 # prefix = 'perm'
 # prefix = 'classif'
 prefix = 'perm_subsamp'
-SAVE_PATH = SAVE_PATH / 'psd'
 SOLVER = 'svd'  # 'svd' 'lsqr'
-SUBSAMPLE = prefix.endswith('subsamp')
 PERM = prefix.startswith('perm')
+SUBSAMPLE = prefix.endswith('subsamp')
 if PERM:
     N_PERM = 999
 else:
     N_PERM = None
 N_TRIALS = None
+SAVE_PATH = SAVE_PATH / 'psd'
 
 
 def main(state, elec):
     global N_TRIALS, SUBSAMPLE, SAVE_PATH
     if SUBSAMPLE:
-        info_data = pd.read_csv(SAVE_PATH / 'info_data.csv')[STATE_LIST]
+        info_data = pd.read_csv(SAVE_PATH.parent / 'info_data.csv')[STATE_LIST]
         if N_TRIALS is None:
             N_TRIALS = info_data.min().min()
         N_SUBS = len(info_data) - 1

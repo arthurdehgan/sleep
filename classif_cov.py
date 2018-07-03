@@ -15,16 +15,17 @@ from params import SAVE_PATH, STATE_LIST, LABEL_PATH
 # import pdb
 
 # name = 'moy_cov'
-name = 'subsamp_cov'
-prefix = 'classif_'
+prefix = 'classif_subsamp_'
+name = 'cov'
 FULL_TRIAL = name.startswith('ft') or name.startswith('moy')
-SUBSAMPLE = name.startswith('subsamp')
-SAVE_PATH = SAVE_PATH / 'cov/'
-PERM = True if FULL_TRIAL else False
+SUBSAMPLE = prefix.endswith('subsamp_')
+PERM = prefix.startswith('perm')
 if PERM:
     N_PERM = 999
 else:
     N_PERM = None
+
+SAVE_PATH = SAVE_PATH / name
 
 
 def main(state):

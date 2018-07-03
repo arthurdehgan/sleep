@@ -17,10 +17,11 @@ from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW,\
 # import pdb
 
 # prefix = 'perm_'
-prefix = 'classif_'
+# prefix = 'classif_'
+prefix = 'classif_subsamp_'
+name = 'cosp'
 # name = 'ft_cosp'
 # name = 'moy_cosp'
-name = 'subsamp_cosp'
 # name = 'im_cosp'
 # name = 'wpli'
 # name = 'coh'
@@ -28,14 +29,14 @@ name = 'subsamp_cosp'
 # name = 'ft_wpli'
 # name = 'ft_coh'
 # name = 'ft_imcoh'
-SAVE_PATH = SAVE_PATH / name
 FULL_TRIAL = name.startswith('ft') or name.startswith('moy')
-SUBSAMPLE = name.startswith('subsamp')
-PERM = True if FULL_TRIAL else False
+SUBSAMPLE = prefix.endswith('subsamp_')
+PERM = prefix.startswith('perm')
 if PERM:
     N_PERM = 999
 else:
     N_PERM = None
+SAVE_PATH = SAVE_PATH / name
 
 
 def main(state, freq):
