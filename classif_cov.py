@@ -15,13 +15,13 @@ from params import SAVE_PATH, STATE_LIST, LABEL_PATH
 # import pdb
 
 # name = 'moy_cov'
-prefix = 'classif_subsamp_'
+prefix = 'perm_subsamp_'
 name = 'cov'
 FULL_TRIAL = name.startswith('ft') or name.startswith('moy')
 SUBSAMPLE = prefix.endswith('subsamp_')
 PERM = prefix.startswith('perm')
 if PERM:
-    N_PERM = 999
+    N_PERM = 1
 else:
     N_PERM = None
 
@@ -38,7 +38,7 @@ def main(state):
         info_data = pd.read_csv(SAVE_PATH.parent / 'info_data.csv')[STATE_LIST]
         N_TRIALS = info_data.min().min()
         N_SUBS = len(info_data) - 1
-        groups = [i for _ in range(N_TRIALS) for i in range(N_SUBS)]
+        groups = [[i] * N_TRIALS for i in range(N_SUBS)]
         N_TOTAL = N_TRIALS * N_SUBS
         labels = [0 if i < N_TOTAL / 2 else 1 for i in range(N_TOTAL)]
     else:
