@@ -35,7 +35,7 @@ def main(state):
         labels = np.concatenate((np.ones(18,), np.zeros(18,)))
         groups = range(36)
     elif SUBSAMPLE:
-        info_data = pd.read_csv('info_data.csv')[STATE_LIST]
+        info_data = pd.read_csv(SAVE_PATH.parent / 'info_data.csv')[STATE_LIST]
         N_TRIALS = info_data.min().min()
         N_SUBS = len(info_data) - 1
         groups = [i for _ in range(N_TRIALS) for i in range(N_SUBS)]
