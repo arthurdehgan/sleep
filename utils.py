@@ -1,6 +1,7 @@
 """Functions used to compute and analyse EEG/MEG data with pyriemann."""
 from scipy.io import loadmat, savemat
 import numpy as np
+from numpy.random import permutation
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from sklearn.base import clone
@@ -56,12 +57,11 @@ def _permutations(iterable, r, limit=None):
 
 
 def permutation_test(estimator, cv, X, y, groups=None, n_perm=0, n_jobs=1):
-    perm_index = _permutations(range(len(y)), len(y), n_perm)
-    next(perm_index)  # first generated perm is not a permutation
     acc_pscores, auc_pscores = [], []
-    for perm in perm_index:
+    for _ in range(n_perm):
+        perm_index = permutation(len(y))
         clf = clone(estimator)
-        y_perm = y[list(perm)]
+        y_perm = y[perm_index]
         perm_acc, perm_auc = cross_val_scores(clf, cv, X,
                                               y_perm, groups, n_jobs)
         acc_pscores.append(np.mean(perm_acc))
