@@ -56,8 +56,11 @@ def main(state):
 
             if FULL_TRIAL:
                 data = data['data']
+            elif SUBSAMPLE:
+                data = prepare_data(data, n_trials=N_TRIALS)
             else:
                 data = prepare_data(data)
+            print(data.shape)
 
             sl2go = StratifiedLeave2GroupsOut()
             lda = LDA()
