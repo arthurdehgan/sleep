@@ -18,15 +18,16 @@ from params import SAVE_PATH, LABEL_PATH, path, CHANNEL_NAMES,\
 
 # prefix = 'perm'
 # prefix = 'classif'
-prefix = 'perm_subsamp'
+prefix = 'bootstrapped_perm_subsamp'
 SOLVER = 'svd'  # 'svd' 'lsqr'
-PERM = prefix.startswith('perm')
-SUBSAMPLE = prefix.endswith('subsamp')
-if PERM:
-    N_PERM = 999
-else:
-    N_PERM = None
-N_TRIALS = None
+
+pref_list = prefix.split('_')
+BOOTSTRAP = 'bootstrapped' in pref_list
+SUBSAMPLE = 'subsamp' in pref_list
+PERM = 'perm' in pref_list
+N_PERM = 99 if PERM else None
+N_BOOTSTRAPS = 10 if BOOTSTRAP else None
+
 SAVE_PATH = SAVE_PATH / 'psd'
 
 
@@ -34,8 +35,7 @@ def main(state, elec):
     global N_TRIALS, SUBSAMPLE, SAVE_PATH
     if SUBSAMPLE:
         info_data = pd.read_csv(SAVE_PATH.parent / 'info_data.csv')[STATE_LIST]
-        if N_TRIALS is None:
-            N_TRIALS = info_data.min().min()
+        N_TRIALS = info_data.min().min()
         N_SUBS = len(info_data) - 1
         groups = [i for _ in range(N_TRIALS) for i in range(N_SUBS)]
         N_TOTAL = N_TRIALS * N_SUBS
@@ -44,52 +44,57 @@ def main(state, elec):
         labels = loadmat(LABEL_PATH / state + '_labels.mat')['y'].ravel()
         labels, groups = create_groups(labels)
 
-    for key in FREQ_DICT:
-        print(state, elec, key)
+    for freq in FREQ_DICT:
+        print(state, elec, freq)
 
         file_name = prefix + '_PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
-                state, key, elec, WINDOW, OVERLAP)
-        # file_name = 'perm_PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
-        #         state, key, elec, WINDOW, OVERLAP)
-        results_file_path = SAVE_PATH / 'results/{}_solver'.format(SOLVER) / file_name
+                state, freq, elec, WINDOW, OVERLAP)
 
-        if not path(results_file_path).isfile():
-            # print('\nloading PSD for {} frequencies'.format(key))
-            data_file_path = SAVE_PATH /\
-                    'PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
-                        state, key, elec, WINDOW, OVERLAP)
+        save_file_path = SAVE_PATH / 'results' / file_name
+
+        if not save_file_path.isfile():
+            data_file_path = SAVE_PATH / 'PSD_{}_{}_{}_{}_{:.2f}.mat'.format(
+                        state, freq, elec, WINDOW, OVERLAP)
+
             if path(data_file_path).isfile():
-                data = prepare_data(loadmat(data_file_path), n_trials=N_TRIALS)
+                final_save = None
+
+                for i in range(N_BOOTSTRAPS):
+                    data = loadmat(data_file_path)
+                    if SUBSAMPLE:
+                        data = prepare_data(data,
+                                            n_trials=N_TRIALS,
+                                            random_state=i)
+                    else:
+                        data = prepare_data(data)
+
+                    data = np.array(data).reshape(len(data), 1)
+                    sl2go = StratifiedLeave2GroupsOut()
+                    clf = LDA(solver=SOLVER)
+                    save = classification(clf, sl2go, data, labels, groups,
+                                          N_PERM, n_jobs=-1)
+                    save['acc_bootstrap'] = [save['acc_score']]
+                    save['auc_bootstrap'] = [save['auc_score']]
+                    if final_save is None:
+                        final_save = save
+                    else:
+                        for key, value in final_save.items():
+                            final_save[key] = final_save[key] + save[key]
+
+                savemat(save_file_path, final_save)
+
+                if PERM:
+                    print('{} : {:.2f} significatif a p={:.4f}'.format(
+                        freq, save['acc_score'], save['acc_pvalue']))
+                else:
+                    print('{} : {:.2f}'.format(freq, save['acc_score']))
+
             else:
-                print(path(data_file_path).name + ' Not found')
-                print('please run "computePSD.py" and\
-                      "group_PSD_per_subjects.py" before\
-                      running this script')
-
-            # print('classification...')
-            data = np.array(data).reshape(len(data), 1)
-            sl2go = StratifiedLeave2GroupsOut()
-            clf = LDA(solver=SOLVER)
-            accuracies = []
-            for _ in range(100):
-                save = classification(clf, sl2go, data, labels, groups,
-                                      N_PERM, n_jobs=-1)
-                accuracies.append(save['acc_score'])
-            save['reps'] = accuracies
-
-            if PERM:
-                print('{} : {:.2f} significatif a p={:.4f}'.format(
-                    key, save['acc_score'], save['acc_pvalue']))
-            else:
-                print('{} : {:.2f}'.format(key, save['acc_score']))
-
-            savemat(results_file_path, save)
+                print(data_file_path.name + ' Not found')
 
 
 if __name__ == '__main__':
-    T0 = time()
-
+    TIMELAPSE_START = time()
     for state, elec in product(STATE_LIST, CHANNEL_NAMES):
             main(state, elec)
-
-    print('total time lapsed : {}'.format(elapsed_time(T0, time())))
+    print('total time lapsed : %s' % (elapsed_time(TIMELAPSE_START, time())))

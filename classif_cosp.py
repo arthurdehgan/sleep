@@ -90,7 +90,7 @@ def main(state, freq):
                 if final_save is None:
                     final_save = save
                 else:
-                    for (key, value) in final_save:
+                    for key, value in final_save.items():
                         final_save[key] = final_save[key] + save[key]
 
             savemat(file_path, save)

@@ -17,6 +17,7 @@ from params import SAVE_PATH, STATE_LIST, LABEL_PATH
 # name = 'moy_cov'
 prefix = 'bootstrapped_classif_subsamp_'
 name = 'cov'
+
 pref_list = prefix.split('_')
 BOOTSTRAP = 'bootstrapped' in pref_list
 FULL_TRIAL = 'ft' in pref_list or 'moy' in pref_list
@@ -45,17 +46,18 @@ def main(state):
         labels = loadmat(LABEL_PATH / state + '_labels.mat')['y'].ravel()
         labels, groups = create_groups(labels)
 
-    save_file_path = SAVE_PATH / 'results' /\
-        prefix + name + '_{}.mat'.format(state)
+    file_name = prefix + name + '_{}.mat'.format(state)
+
+    save_file_path = SAVE_PATH / 'results' / file_name
 
     if not save_file_path.isfile():
         data_file_path = SAVE_PATH / name + '_{}.mat'.format(state)
 
         if data_file_path.isfile():
-            data = loadmat(data_file_path)
             final_save = None
 
             for i in range(N_BOOTSTRAPS):
+                data = loadmat(data_file_path)
                 if FULL_TRIAL:
                     data = data['data']
                 elif SUBSAMPLE:
@@ -75,7 +77,7 @@ def main(state):
                 if final_save is None:
                     final_save = save
                 else:
-                    for (key, value) in final_save:
+                    for key, value in final_save.items():
                         final_save[key] = final_save[key] + save[key]
 
             savemat(save_file_path, final_save)
