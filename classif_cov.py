@@ -15,13 +15,14 @@ from params import SAVE_PATH, STATE_LIST, LABEL_PATH
 # import pdb
 
 # name = 'moy_cov'
-prefix = 'perm_subsamp_'
+BOOTSTRAP = 10
+prefix = 'classif_subsamp_'
 name = 'cov'
 FULL_TRIAL = name.startswith('ft') or name.startswith('moy')
 SUBSAMPLE = prefix.endswith('subsamp_')
 PERM = prefix.startswith('perm')
 if PERM:
-    N_PERM = 1
+    N_PERM = 999
 else:
     N_PERM = None
 
@@ -53,22 +54,32 @@ def main(state):
 
         if data_file_path.isfile():
             data = loadmat(data_file_path)
+            final_save = None
 
-            if FULL_TRIAL:
-                data = data['data']
-            elif SUBSAMPLE:
-                data = prepare_data(data, n_trials=N_TRIALS)
-            else:
-                data = prepare_data(data)
-            print(data.shape)
+            for i in range(BOOTSTRAP):
+                if FULL_TRIAL:
+                    data = data['data']
+                elif SUBSAMPLE:
+                    data = prepare_data(data,
+                                        n_trials=N_TRIALS,
+                                        random_state=i)
+                else:
+                    data = prepare_data(data)
 
-            sl2go = StratifiedLeave2GroupsOut()
-            lda = LDA()
-            clf = TSclassifier(clf=lda)
-            save = classification(clf, sl2go, data, labels,
-                                  groups, N_PERM, n_jobs=-1)
+                sl2go = StratifiedLeave2GroupsOut()
+                lda = LDA()
+                clf = TSclassifier(clf=lda)
+                save = classification(clf, sl2go, data, labels,
+                                      groups, N_PERM, n_jobs=-1)
+                save['acc_bootstrap'] = [save['acc_score']]
+                save['auc_bootstrap'] = [save['auc_score']]
+                if final_save is None:
+                    final_save = save
+                else:
+                    for (key, value) in final_save:
+                        final_save[key] = final_save[key] + save[key]
 
-            savemat(save_file_path, save)
+            savemat(save_file_path, final_save)
 
             print('accuracy for %s : %0.2f (+/- %0.2f)' %
                   (state, save['acc_score'], np.std(save['acc'])))

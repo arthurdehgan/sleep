@@ -417,14 +417,15 @@ def elapsed_time(t0, t1):
     return Time
 
 
-def prepare_data(dico, key='data', n_trials=None):
+def prepare_data(dico, key='data', n_trials=None, random_state=None):
     data = dico[key].ravel()
     final_data = None
     for submat in data:
         if submat.shape[0] == 1:
             submat = submat.ravel()
         if n_trials is not None:
-            index = np.random.choice(range(len(submat)), n_trials, replace=False)
+            index = np.random.RandomState(random_state).choice(
+                range(len(submat)), n_trials, replace=False)
             submat = submat[index]
         final_data = submat if final_data is None else np.concatenate((submat, final_data))
 
