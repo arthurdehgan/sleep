@@ -15,16 +15,15 @@ from params import SAVE_PATH, STATE_LIST, LABEL_PATH
 # import pdb
 
 # name = 'moy_cov'
-BOOTSTRAP = 10
-prefix = 'classif_subsamp_'
+prefix = 'bootstrapped_classif_subsamp_'
 name = 'cov'
-FULL_TRIAL = name.startswith('ft') or name.startswith('moy')
-SUBSAMPLE = prefix.endswith('subsamp_')
-PERM = prefix.startswith('perm')
-if PERM:
-    N_PERM = 999
-else:
-    N_PERM = None
+pref_list = prefix.split('_')
+BOOTSTRAP = 'bootstrapped' in pref_list
+FULL_TRIAL = 'ft' in pref_list or 'moy' in pref_list
+SUBSAMPLE = 'subsamp' in pref_list
+PERM = 'perm' in pref_list
+N_PERM = 999 if PERM else None
+N_BOOTSTRAPS = 10 if BOOTSTRAP else None
 
 SAVE_PATH = SAVE_PATH / name
 
@@ -56,7 +55,7 @@ def main(state):
             data = loadmat(data_file_path)
             final_save = None
 
-            for i in range(BOOTSTRAP):
+            for i in range(N_BOOTSTRAPS):
                 if FULL_TRIAL:
                     data = data['data']
                 elif SUBSAMPLE:

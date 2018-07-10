@@ -18,7 +18,7 @@ from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW,\
 
 # prefix = 'perm_'
 # prefix = 'classif_'
-prefix = 'classif_subsamp_'
+prefix = 'bootstrapped_classif_subsamp_'
 name = 'cosp'
 # name = 'ft_cosp'
 # name = 'moy_cosp'
@@ -29,13 +29,14 @@ name = 'cosp'
 # name = 'ft_wpli'
 # name = 'ft_coh'
 # name = 'ft_imcoh'
-FULL_TRIAL = name.startswith('ft') or name.startswith('moy')
-SUBSAMPLE = prefix.endswith('subsamp_')
-PERM = prefix.startswith('perm')
-if PERM:
-    N_PERM = 999
-else:
-    N_PERM = None
+pref_list = prefix.split('_')
+BOOTSTRAP = 'bootstrapped' in pref_list
+FULL_TRIAL = 'ft' in pref_list or 'moy' in pref_list
+SUBSAMPLE = 'subsamp' in pref_list
+PERM = 'perm' in pref_list
+N_PERM = 999 if PERM else None
+N_BOOTSTRAPS = 10 if BOOTSTRAP else None
+
 SAVE_PATH = SAVE_PATH / name
 
 
@@ -67,19 +68,30 @@ def main(state, freq):
 
         if data_file_path.isfile():
             data = loadmat(data_file_path)
+            final_save = None
 
-            if FULL_TRIAL:
-                data = data['data']
-            elif SUBSAMPLE:
-                data = prepare_data(data, n_trials=N_TRIALS)
-            else:
-                data = prepare_data(data)
+            for i in range(N_BOOTSTRAPS):
+                if FULL_TRIAL:
+                    data = data['data']
+                elif SUBSAMPLE:
+                    data = prepare_data(data,
+                                        n_trials=N_TRIALS,
+                                        random_state=i)
+                else:
+                    data = prepare_data(data)
 
-            sl2go = StratifiedLeave2GroupsOut()
-            lda = LDA()
-            clf = TSclassifier(clf=lda)
-            save = classification(clf, sl2go, data, labels,
-                                  groups, N_PERM, n_jobs=-1)
+                sl2go = StratifiedLeave2GroupsOut()
+                lda = LDA()
+                clf = TSclassifier(clf=lda)
+                save = classification(clf, sl2go, data, labels,
+                                      groups, N_PERM, n_jobs=-1)
+                save['acc_bootstrap'] = [save['acc_score']]
+                save['auc_bootstrap'] = [save['auc_score']]
+                if final_save is None:
+                    final_save = save
+                else:
+                    for (key, value) in final_save:
+                        final_save[key] = final_save[key] + save[key]
 
             savemat(file_path, save)
 
