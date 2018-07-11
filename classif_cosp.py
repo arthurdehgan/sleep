@@ -67,10 +67,10 @@ def main(state, freq):
         data_file_path = SAVE_PATH / file_name
 
         if data_file_path.isfile():
-            data = loadmat(data_file_path)
             final_save = None
 
             for i in range(N_BOOTSTRAPS):
+                data = loadmat(data_file_path)
                 if FULL_TRIAL:
                     data = data['data']
                 elif SUBSAMPLE:

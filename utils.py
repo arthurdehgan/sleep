@@ -422,12 +422,15 @@ def prepare_data(dico, key='data', n_trials=None, random_state=None):
     final_data = None
     for submat in data:
         if submat.shape[0] == 1:
-            submat = submat.ravel()
+            prep_submat = submat.ravel()
         if n_trials is not None:
             index = np.random.RandomState(random_state).choice(
                 range(len(submat)), n_trials, replace=False)
-            submat = submat[index]
-        final_data = submat if final_data is None else np.concatenate((submat, final_data))
+            prep_submat = submat[index]
+        else:
+            prep_submat = submat
+        final_data = prep_submat if final_data is None else np.concatenate(
+            (prep_submat, final_data))
 
     return np.asarray(final_data)
 
