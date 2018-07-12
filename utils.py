@@ -422,7 +422,7 @@ def prepare_data(dico, key='data', n_trials=None, random_state=None):
     final_data = None
     for submat in data:
         if submat.shape[0] == 1:
-            prep_submat = submat.ravel()
+            submat = submat.ravel()
         if n_trials is not None:
             index = np.random.RandomState(random_state).choice(
                 range(len(submat)), n_trials, replace=False)

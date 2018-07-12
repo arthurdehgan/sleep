@@ -32,7 +32,7 @@ SAVE_PATH = SAVE_PATH / 'psd'
 
 
 def main(state, elec):
-    global N_TRIALS, SUBSAMPLE, SAVE_PATH
+    global SUBSAMPLE, SAVE_PATH
     if SUBSAMPLE:
         info_data = pd.read_csv(SAVE_PATH.parent / 'info_data.csv')[STATE_LIST]
         N_TRIALS = info_data.min().min()
