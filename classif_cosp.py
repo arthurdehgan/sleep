@@ -18,7 +18,7 @@ from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW,\
 
 # prefix = 'perm_'
 # prefix = 'classif_'
-prefix = 'bootstrapped_classif_subsamp_'
+prefix = 'classif_subsamp_'
 name = 'cosp'
 # name = 'ft_cosp'
 # name = 'moy_cosp'
@@ -35,7 +35,7 @@ FULL_TRIAL = 'ft' in pref_list or 'moy' in pref_list
 SUBSAMPLE = 'subsamp' in pref_list
 PERM = 'perm' in pref_list
 N_PERM = 999 if PERM else None
-N_BOOTSTRAPS = 10 if BOOTSTRAP else None
+N_BOOTSTRAPS = 10 if BOOTSTRAP else 1
 
 SAVE_PATH = SAVE_PATH / name
 
@@ -50,7 +50,7 @@ def main(state, freq):
         info_data = pd.read_csv(SAVE_PATH.parent / 'info_data.csv')[STATE_LIST]
         N_TRIALS = info_data.min().min()
         N_SUBS = len(info_data) - 1
-        groups = [i for _ in range(N_TRIALS) for i in range(N_SUBS)]
+        groups = [i for i in range(N_SUBS) for _ in range(N_TRIALS)]
         N_TOTAL = N_TRIALS * N_SUBS
         labels = [0 if i < N_TOTAL / 2 else 1 for i in range(N_TOTAL)]
     else:
