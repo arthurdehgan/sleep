@@ -44,60 +44,19 @@ def relative_perm(cond1, cond2, n_perm=0, correction='maxstat', method='indep',
 
         pval: pvalues after permutation test and correction if selected
     """
-    check_correction(correction)
+    _check_correction(correction)
 
     values = compute_relatives(cond1, cond2)
 
     perm_t = perm_test(cond1, cond2, n_perm, compute_relatives,
                        n_jobs=n_jobs)
 
-    pval = compute_pvalues(tval, perm_t, two_tailed, correction=correction)
+    pval = compute_pvalues(values, perm_t, two_tailed, correction=correction)
 
     if correction in ['bonferroni', 'fdr']:
         pval = pvalues_correction(pval, correction, method)
 
     return values, pval
-
-
-def compute_relatives(cond1, cond2, **kwargs):
-    """Computes the relative changes.
-
-    Parameters:
-        cond1, cond2: numpy arrays of shape n_subject x n_eletrodes
-                      or n_trials x n_electrodes. arrays of data for
-                      the independant conditions.
-
-    Returns:
-        values: list, the calculated relative changes
-    """
-    cond1 = np.asarray(cond1).mean(axis=0)
-    cond2 = np.asarray(cond2).mean(axis=0)
-    values = (cond1 - cond2) / cond2
-    return values
-
-
-def _relative_perm(data, index, **kwargs):
-    """Compute realtives changes after on a selectes permutation"""
-    cond1, cond2 = _generate_conds(data, index)
-    return compute_relatives(cond1, cond2, kwargs)
-
-
-def _generate_conds(data, index):
-    """
-
-    Parameters:
-        data: numpy array of the concatenated condition data.
-
-        index: the permutation index to apply.
-
-    Returns:
-        cond1, cond2: numpy arrays of permutated values.
-    """
-    index = list(index)
-    index_comp = list(set(range(len(data))) - set(index))
-    perm_mat = np.vstack((data[index], data[index_comp]))
-    cond1, cond2 = perm_mat[:len(index)], perm_mat[len(index):]
-    return cond1, cond2
 
 
 def ttest_perm_unpaired(cond1, cond2, n_perm=0, correction='maxstat',
@@ -137,7 +96,7 @@ def ttest_perm_unpaired(cond1, cond2, n_perm=0, correction='maxstat',
 
         pval: pvalues after permutation test and correction if selected
     """
-    check_correction(correction)
+    _check_correction(correction)
 
     tval, _ = ttest_ind(cond1, cond2, equal_var=equal_var)
 
@@ -150,22 +109,6 @@ def ttest_perm_unpaired(cond1, cond2, n_perm=0, correction='maxstat',
         pval = pvalues_correction(pval, correction, method)
 
     return tval, pval
-
-
-def _combinations(iterable, r, limit=None):
-    '''combinations generator'''
-    i = 0
-    for e in combinations(iterable, r):
-        yield e
-        i += 1
-        if limit is not None and i == limit:
-            break
-
-
-def _ttest_perm(data, index, equal_var):
-    '''ttest with the permutation index'''
-    cond1, cond2 = _generate_conds(data, index)
-    return ttest_ind(cond1, cond2, equal_var=equal_var)[0]
 
 
 def perm_test(cond1, cond2, n_perm, function, equal_var=False, n_jobs=-1):
@@ -301,7 +244,64 @@ def pvalues_correction(pvalues, correction, method):
     return pvalues
 
 
-def check_correction(correction):
+def compute_relatives(cond1, cond2, **kwargs):
+    """Computes the relative changes.
+
+    Parameters:
+        cond1, cond2: numpy arrays of shape n_subject x n_eletrodes
+                      or n_trials x n_electrodes. arrays of data for
+                      the independant conditions.
+
+    Returns:
+        values: list, the calculated relative changes
+    """
+    cond1 = np.asarray(cond1).mean(axis=0)
+    cond2 = np.asarray(cond2).mean(axis=0)
+    values = (cond1 - cond2) / cond2
+    return values
+
+
+def _generate_conds(data, index):
+    """
+
+    Parameters:
+        data: numpy array of the concatenated condition data.
+
+        index: the permutation index to apply.
+
+    Returns:
+        cond1, cond2: numpy arrays of permutated values.
+    """
+    index = list(index)
+    index_comp = list(set(range(len(data))) - set(index))
+    perm_mat = np.vstack((data[index], data[index_comp]))
+    cond1, cond2 = perm_mat[:len(index)], perm_mat[len(index):]
+    return cond1, cond2
+
+
+def _combinations(iterable, r, limit=None):
+    '''combinations generator'''
+    i = 0
+    for e in combinations(iterable, r):
+        yield e
+        i += 1
+        if limit is not None and i == limit:
+            break
+
+
+def _relative_perm(data, index, **kwargs):
+    """Compute realtives changes after on a selectes permutation"""
+    cond1, cond2 = _generate_conds(data, index)
+    return compute_relatives(cond1, cond2, kwargs)
+
+
+def _ttest_perm(data, index, equal_var):
+    '''ttest with the permutation index'''
+    cond1, cond2 = _generate_conds(data, index)
+    return ttest_ind(cond1, cond2, equal_var=equal_var)[0]
+
+
+def _check_correction(correction):
     """Checks if correction is a correct option"""
     if correction not in ['maxstat', 'bonferroni', 'fdr', None]:
         raise ValueError(correction, 'is not a valid correction option')
@@ -314,6 +314,5 @@ if __name__ == '__main__':
     tval4, pval4 = ttest_perm_unpaired(cond1, cond2, n_perm=100, correction='maxstat')
     tval2, pval2 = ttest_perm_unpaired(cond1, cond2, n_perm=100, correction='bonferroni')
     tval3, pval3 = ttest_perm_unpaired(cond1, cond2, n_perm=100, correction='fdr')
-    # print(pval, pval2, pval3, sep='\n')
     val, pval4 = relative_perm(cond1, cond2, n_perm=10)
 
