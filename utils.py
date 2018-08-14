@@ -1,6 +1,9 @@
 """Functions used to compute and analyse EEG/MEG data with pyriemann."""
 from scipy.io import loadmat, savemat
+import h5py
 import numpy as np
+from matplotlib import pyplot as plt
+from path import Path as path
 from numpy.random import permutation
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
@@ -435,16 +438,115 @@ def prepare_data(dico, key='data', n_trials=None, random_state=None):
     return np.asarray(final_data)
 
 
-def load_samples(data_path, subjectNumber, sleep_state, elec=None):
+def load_hypno(sub):
+    HYPNO_PATH = path('/home/arthur/Documents/data/sleep_data/sleep_raw_data/hypnograms')
+    with open(HYPNO_PATH / 'hyp_per_s{}.txt'.format(sub)) as f:
+        hypno = []
+        for line in f:
+            if line[0] not in ['-', '\n']:
+                hypno.append(line[0])
+    return hypno
+
+
+def visu_hypno(sub):
+    hypno = list(map(int, load_hypno(sub)))
+    plt.plot(hypno)
+    plt.show()
+
+
+def empty_stage_dict():
+    stages = ['S1', 'S2', 'S3', 'S4', 'REM']
+    stage_dict = {}
+    for st in stages:
+        stage_dict[st] = []
+    return dict(stage_dict)
+
+
+def split_cycles(data, sub, duree=1200):
+    stages = ['S1', 'S2', 'S3', 'S4', 'REM']
+    ref = '12345'
+    cycles = [empty_stage_dict()]
+    hypno = load_hypno(sub)
+    for i, hyp in enumerate(hypno):
+        next_hyps = hypno[i+1:i+1 + duree]
+        obs = data[i*1000:(i+1)*1000]
+        if hyp in ref:
+            cycles[-1][stages[ref.index(hyp)]].append(obs)
+            if hyp == '5' and '5' not in next_hyps and len(cycles[-1]['REM']) >= 300:
+                cycles.append(dict(empty_stage_dict()))
+    return cycles
+
+
+def convert_sleep_data(data_path, subjectNumber, elec=None):
     """Load the samples of a subject for a sleepstate."""
-    tempFileName = data_path / "%s_s%i.mat" % (sleep_state, subjectNumber)
+    tempFileName = data_path / "s%i_sleep.mat" % (subjectNumber)
     try:
         if elec is None:
-            dataset = loadmat(tempFileName)[sleep_state][:19]
+            dataset = np.asarray(h5py.File(
+                tempFileName, 'r')['m_data'])[:, :19]
         else:
-            dataset = loadmat(tempFileName)[sleep_state][elec]
+            dataset = np.asarray(h5py.File(
+                tempFileName, 'r')['m_data'])[:, elec]
     except(IOError):
         print(tempFileName, "not found")
+    cycles = split_cycles(dataset, subjectNumber)
+    dataset = []
+    for i, cycle in enumerate(cycles):
+        for stage, secs in cycle.items():
+            if len(secs) != 0:
+                secs = np.array(secs)
+                save = np.concatenate(
+                    [secs[i:i+30] for i in range(0, len(secs), 30)])
+                savemat(data_path / '{}_s{}_cycle{}'.format(
+                    stage, subjectNumber, i+1), {stage: save})
+
+
+def merge_S3_S4(data_path, subjectNumber, cycle):
+    try:
+        S3_file = data_path / 'S3_s{}_cycle{}.mat'.format(subjectNumber, cycle)
+        S3 = loadmat(S3_file)['S3']
+        S4_file = data_path / 'S4_s{}_cycle{}.mat'.format(subjectNumber, cycle)
+        S4 = loadmat(S4_file)['S4']
+        data = {'SWS': np.concatenate((S3, S4), axis=0)}
+        savemat(data_path / 'SWS_s{}_cycle{}.mat'.format(
+            subjectNumber, cycle), data)
+        S3_file.remove()
+        S4_file.remove()
+    except IOError:
+        print('file not found for cycle', cycle)
+
+
+def merge_SWS(data_path, subjectNumber, cycle=None):
+    if cycle is None:
+        for i in range(1, 4):
+            merge_S3_S4(data_path, subjectNumber, i)
+    else:
+        merge_S3_S4(data_path, subjectNumber, cycle)
+
+
+def load_full_sleep(data_path, subjectNumber, sleep_state,
+                    cycle=None):
+    """Load the samples of a subject for a sleepstate."""
+    tempFileName = data_path / "%s_s%i.mat" % (sleep_state, subjectNumber)
+    if cycle is not None:
+        tempFileName = data_path / "{}_s{}_cycle{}.mat".format(
+            sleep_state, subjectNumber, cycle)
+    try:
+        dataset = loadmat(tempFileName)[sleep_state]
+    except(IOError, TypeError) as e:
+        print(tempFileName, "not found")
+        dataset = None
+    return dataset
+
+
+def load_samples(data_path, subjectNumber, sleep_state, cycle=None, elec=None):
+    """Load the samples of a subject for a sleepstate."""
+    if elec is None:
+        dataset = load_full_sleep(
+            data_path, subjectNumber, sleep_state, cycle)[:19]
+    else:
+        dataset = load_full_sleep(
+            data_path, subjectNumber, sleep_state, cycle)[elec]
     dataset = dataset.swapaxes(0, 2)
     dataset = dataset.swapaxes(1, 2)
     return dataset
