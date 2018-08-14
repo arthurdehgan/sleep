@@ -18,7 +18,8 @@ from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW,\
 
 # prefix = 'perm_'
 # prefix = 'classif_'
-prefix = 'classif_subsamp_'
+prefix = 'classif_reduced'
+# prefix = 'classif_subsamp_'
 name = 'cosp'
 # name = 'ft_cosp'
 # name = 'moy_cosp'
@@ -30,14 +31,19 @@ name = 'cosp'
 # name = 'ft_coh'
 # name = 'ft_imcoh'
 pref_list = prefix.split('_')
+if len(pref_list) > 1:
+    save_prefix = pref_list[-1]
 BOOTSTRAP = 'bootstrapped' in pref_list
+REDUCED = 'reduced' in pref_list
 FULL_TRIAL = 'ft' in pref_list or 'moy' in pref_list
 SUBSAMPLE = 'subsamp' in pref_list
 PERM = 'perm' in pref_list
 N_PERM = 999 if PERM else None
 N_BOOTSTRAPS = 10 if BOOTSTRAP else 1
+N_BOOTSTRAPS = 19 if REDUCED else 1
 
 SAVE_PATH = SAVE_PATH / name
+print(name, prefix)
 
 
 def main(state, freq):
@@ -80,20 +86,29 @@ def main(state, freq):
                 else:
                     data = prepare_data(data)
 
+                if REDUCED:
+                    reduced_data = []
+                    for submat in data:
+                        b = np.delete(submat, i, 0)
+                        c = np.delete(b, i, 1)
+                        reduced_data.append(c)
+                    data = np.asarray(reduced_data)
+
                 sl2go = StratifiedLeave2GroupsOut()
                 lda = LDA()
                 clf = TSclassifier(clf=lda)
                 save = classification(clf, sl2go, data, labels,
                                       groups, N_PERM, n_jobs=-1)
-                save['acc_bootstrap'] = [save['acc_score']]
-                save['auc_bootstrap'] = [save['auc_score']]
-                if final_save is None:
-                    final_save = save
-                else:
-                    for key, value in final_save.items():
-                        final_save[key] = final_save[key] + save[key]
 
-            savemat(file_path, save)
+                if BOOTSTRAP or REDUCED:
+                    if i == 0:
+                        save['acc_' + save_prefix] = [save['acc_score']]
+                        save['auc_' + save_prefix] = [save['auc_score']]
+                    else:
+                        save['acc_' + save_prefix] += save['acc_score']
+                        save['auc_' + save_prefix] += save['auc_score']
+
+            savemat(file_path, final_save)
 
             print('accuracy for %s %s : %0.2f (+/- %0.2f)' %
                   (state, freq, save['acc_score'], np.std(save['acc'])))
