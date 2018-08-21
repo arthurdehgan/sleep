@@ -11,15 +11,15 @@ import numpy as np
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from pyriemann.classification import TSclassifier
 from utils import create_groups, StratifiedLeave2GroupsOut, elapsed_time,\
-                  prepare_data, classification
+    prepare_data, classification
 from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW,\
-                   OVERLAP, LABEL_PATH
+    OVERLAP, LABEL_PATH
 # import pdb
 
 # prefix = 'perm_'
 # prefix = 'classif_'
-prefix = 'classif_reduced'
-# prefix = 'classif_subsamp_'
+# prefix = 'classif_reduced'
+prefix = 'bootstrapped_classif_subsamp_'
 name = 'cosp'
 # name = 'ft_cosp'
 # name = 'moy_cosp'
