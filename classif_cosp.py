@@ -18,8 +18,8 @@ from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW,\
 
 # prefix = 'perm_'
 # prefix = 'classif_'
-# prefix = 'classif_reduced'
-prefix = 'bootstrapped_classif_subsamp_'
+prefix = 'classif_reduced_'
+# prefix = 'bootstrapped_classif_subsamp_'
 name = 'cosp'
 # name = 'ft_cosp'
 # name = 'moy_cosp'
@@ -31,14 +31,12 @@ name = 'cosp'
 # name = 'ft_coh'
 # name = 'ft_imcoh'
 pref_list = prefix.split('_')
-if len(pref_list) > 1:
-    save_prefix = pref_list[-1]
 BOOTSTRAP = 'bootstrapped' in pref_list
 REDUCED = 'reduced' in pref_list
 FULL_TRIAL = 'ft' in pref_list or 'moy' in pref_list
 SUBSAMPLE = 'subsamp' in pref_list
 PERM = 'perm' in pref_list
-N_PERM = 999 if PERM else None
+N_PERM = 990 if PERM else None
 N_BOOTSTRAPS = 10 if BOOTSTRAP else 1
 N_BOOTSTRAPS = 19 if REDUCED else 1
 
@@ -73,7 +71,7 @@ def main(state, freq):
         data_file_path = SAVE_PATH / file_name
 
         if data_file_path.isfile():
-            final_save = None
+            final_save = {}
 
             for i in range(N_BOOTSTRAPS):
                 data = loadmat(data_file_path)
@@ -102,11 +100,11 @@ def main(state, freq):
 
                 if BOOTSTRAP or REDUCED:
                     if i == 0:
-                        save['acc_' + save_prefix] = [save['acc_score']]
-                        save['auc_' + save_prefix] = [save['auc_score']]
+                        for key, value in save.items():
+                            final_save[key] = [value]
                     else:
-                        save['acc_' + save_prefix] += save['acc_score']
-                        save['auc_' + save_prefix] += save['auc_score']
+                        for key, value in save.items():
+                            final_save[key] += [value]
 
             savemat(file_path, final_save)
 
