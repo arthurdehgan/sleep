@@ -2,7 +2,7 @@
 from scipy.io import loadmat, savemat
 import h5py
 import numpy as np
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 from path import Path as path
 from numpy.random import permutation
 from abc import ABCMeta, abstractmethod
@@ -448,10 +448,10 @@ def load_hypno(sub):
     return hypno
 
 
-def visu_hypno(sub):
-    hypno = list(map(int, load_hypno(sub)))
-    plt.plot(hypno)
-    plt.show()
+# def visu_hypno(sub):
+    # hypno = list(map(int, load_hypno(sub)))
+    # plt.plot(hypno)
+    # plt.show()
 
 
 def empty_stage_dict():
