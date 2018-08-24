@@ -14,34 +14,33 @@ from utils import create_groups, StratifiedLeave2GroupsOut, elapsed_time,\
     prepare_data, classification
 from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW,\
     OVERLAP, LABEL_PATH
-# import pdb
 
-# prefix = 'perm_'
-# prefix = 'classif_'
-prefix = 'classif_reduced_'
-# prefix = 'bootstrapped_classif_subsamp_'
-name = 'cosp'
-# name = 'ft_cosp'
-# name = 'moy_cosp'
-# name = 'im_cosp'
-# name = 'wpli'
-# name = 'coh'
-# name = 'imcoh'
-# name = 'ft_wpli'
-# name = 'ft_coh'
-# name = 'ft_imcoh'
-pref_list = prefix.split('_')
-BOOTSTRAP = 'bootstrapped' in pref_list
-REDUCED = 'reduced' in pref_list
-FULL_TRIAL = 'ft' in pref_list or 'moy' in pref_list
-SUBSAMPLE = 'subsamp' in pref_list
-PERM = 'perm' in pref_list
+# PREFIX = 'perm_'
+# PREFIX = 'classif_'
+PREFIX = 'classif_reduced_'
+# PREFIX = 'bootstrapped_classif_'
+# NAME = 'subsamp_cosp'
+NAME = 'cosp'
+# NAME = 'ft_cosp'
+# NAME = 'moy_cosp'
+# NAME = 'im_cosp'
+# NAME = 'wpli'
+# NAME = 'coh'
+# NAME = 'imcoh'
+# NAME = 'ft_wpli'
+# NAME = 'ft_coh'
+# NAME = 'ft_imcoh'
+BOOTSTRAP = 'bootstrapped' in PREFIX
+REDUCED = 'reduced' in PREFIX
+FULL_TRIAL = 'ft' in PREFIX or 'moy' in PREFIX
+SUBSAMPLE = 'subsamp' in NAME
+PERM = 'perm' in PREFIX
 N_PERM = 990 if PERM else None
 N_BOOTSTRAPS = 10 if BOOTSTRAP else 1
 N_BOOTSTRAPS = 19 if REDUCED else 1
 
-SAVE_PATH = SAVE_PATH / name
-print(name, prefix)
+SAVE_PATH = SAVE_PATH / NAME
+print(NAME, PREFIX)
 
 
 def main(state, freq):
@@ -52,21 +51,21 @@ def main(state, freq):
         groups = range(36)
     elif SUBSAMPLE:
         info_data = pd.read_csv(SAVE_PATH.parent / 'info_data.csv')[STATE_LIST]
-        N_TRIALS = info_data.min().min()
-        N_SUBS = len(info_data) - 1
-        groups = [i for i in range(N_SUBS) for _ in range(N_TRIALS)]
-        N_TOTAL = N_TRIALS * N_SUBS
-        labels = [0 if i < N_TOTAL / 2 else 1 for i in range(N_TOTAL)]
+        n_trials = info_data.min().min()
+        n_subs = len(info_data) - 1
+        groups = [i for i in range(n_subs) for _ in range(n_trials)]
+        n_total = n_trials * n_subs
+        labels = [0 if i < n_total / 2 else 1 for i in range(n_total)]
     else:
         labels = loadmat(LABEL_PATH / state + '_labels.mat')['y'].ravel()
         labels, groups = create_groups(labels)
 
     file_path = SAVE_PATH / 'results' /\
-        prefix + name + '_{}_{}_{}_{:.2f}.mat'.format(
+        PREFIX + NAME + '_{}_{}_{}_{:.2f}.mat'.format(
             state, freq, WINDOW, OVERLAP)
 
     if not file_path.isfile():
-        file_name = name + '_{}_{}_{}_{:.2f}.mat'.format(
+        file_name = NAME + '_{}_{}_{}_{:.2f}.mat'.format(
             state, freq, WINDOW, OVERLAP)
         data_file_path = SAVE_PATH / file_name
 
@@ -79,7 +78,7 @@ def main(state, freq):
                     data = data['data']
                 elif SUBSAMPLE:
                     data = prepare_data(data,
-                                        n_trials=N_TRIALS,
+                                        n_trials=n_trials,
                                         random_state=i)
                 else:
                     data = prepare_data(data)
@@ -87,9 +86,9 @@ def main(state, freq):
                 if REDUCED:
                     reduced_data = []
                     for submat in data:
-                        b = np.delete(submat, i, 0)
-                        c = np.delete(b, i, 1)
-                        reduced_data.append(c)
+                        temp_a = np.delete(submat, i, 0)
+                        temp_b = np.delete(temp_a, i, 1)
+                        reduced_data.append(temp_b)
                     data = np.asarray(reduced_data)
 
                 sl2go = StratifiedLeave2GroupsOut()
@@ -118,5 +117,5 @@ def main(state, freq):
 if __name__ == '__main__':
     TIMELAPSE_START = time()
     for freq, state in product(FREQ_DICT, STATE_LIST):
-            main(state, freq)
+        main(state, freq)
     print('total time lapsed : %s' % elapsed_time(TIMELAPSE_START, time()))
