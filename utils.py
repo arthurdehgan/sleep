@@ -1,29 +1,37 @@
 """Functions used to compute and analyse EEG/MEG data with pyriemann."""
-from scipy.io import loadmat, savemat
-import h5py
-import numpy as np
-# from matplotlib import pyplot as plt
-from path import Path as path
-from numpy.random import permutation
+import time
+import functools
+from itertools import combinations, permutations
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from sklearn.base import clone
 from sklearn.utils import indexable
 from sklearn.utils.validation import check_array, _num_samples
 from sklearn.metrics import accuracy_score, roc_auc_score
-from joblib import Parallel, delayed
-from itertools import combinations, permutations
-from pyriemann.classification import MDM, TSclassifier
-from sklearn.model_selection import RandomizedSearchCV
-from sklearn.svm import SVC
-from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
-from sklearn.covariance import oas, ledoit_wolf, fast_mcd, empirical_covariance
-from sklearn.ensemble import RandomForestClassifier as RF
+from scipy.io import loadmat, savemat
 from scipy.signal import welch
-from matplotlib import mlab
+import h5py
+import numpy as np
+from numpy.random import permutation
+# from matplotlib import pyplot as plt
+from path import Path as path
+from joblib import Parallel, delayed
 
 
-def cross_val(train_index, test_index, estimator, X, y):
+def timer(func):
+    '''Decorator to compute time spend for the wrapped function'''
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.perf_counter()
+        val = func(*args, **kwargs)
+        time_diff = elapsed_time(start_time, time.perf_counter())
+        print(f'"{func.__name__}" executed in {time_diff}')
+        return val
+    return wrapper
+
+
+def _cross_val(train_index, test_index, estimator, X, y):
+    '''Computes predictions for a subset of data.'''
     clf = clone(estimator)
     x_train, x_test = X[train_index], X[test_index]
     y_train, y_test = y[train_index], y[test_index]
@@ -33,9 +41,12 @@ def cross_val(train_index, test_index, estimator, X, y):
 
 
 def cross_val_scores(estimator, cv, X, y, groups=None, n_jobs=1):
+    '''Computes all crossval on the chosen estimator, cross-val and dataset.
+    To use instead of sklearn cross_val_score if you want both roc_auc and
+    acc in one go.'''
     clf = clone(estimator)
     results = (Parallel(n_jobs=n_jobs)(
-        delayed(cross_val)(train_index, test_index, clf, X, y)
+        delayed(_cross_val)(train_index, test_index, clf, X, y)
         for train_index, test_index in cv.split(X=X, y=y, groups=groups)))
 
     accuracy, auc_list = [], []
@@ -49,17 +60,18 @@ def cross_val_scores(estimator, cv, X, y, groups=None, n_jobs=1):
     return accuracy, auc_list
 
 
-def _permutations(iterable, r, limit=None):
-    '''combinations generator'''
+def _permutations(iterable, size, limit=None):
+    '''Combinations Generator'''
     i = 0
-    for e in permutations(iterable, r):
-        yield e
+    for elem in permutations(iterable, size):
+        yield elem
         i += 1
         if limit is not None and i == limit:
             break
 
 
 def permutation_test(estimator, cv, X, y, groups=None, n_perm=0, n_jobs=1):
+    '''Will do compute permutations aucs and accs.'''
     acc_pscores, auc_pscores = [], []
     for _ in range(n_perm):
         perm_index = permutation(len(y))
@@ -74,10 +86,46 @@ def permutation_test(estimator, cv, X, y, groups=None, n_perm=0, n_jobs=1):
 
 
 def classification(estimator, cv, X, y, groups=None, perm=None, n_jobs=1):
+    '''Do a classification.
+
+    Parameters:
+        estimator: a classifier object from sklearn
+
+        cv: a cross-validation object from sklearn
+
+        X: The Data, array of size n_samples x n_features
+
+        y: the labels, array of size n_samples
+
+        groups: optional, groups for groups based cross-validations
+
+        perm: optional, None means no permutations will be computed
+            otherwise set her the number of permutations
+
+        n_jobs: optional, default: 1, number of threads to use during
+            for the cross-validations. higher means faster. setting to -1 will use
+            all available threads - Warning: may sow down computer.
+
+    Returns:
+        save: a dictionnary countaining:
+            acc_score: the mean score across all cross-validations using the
+            accuracy scoring method
+            auc_score: the mean score across all cross-validations using the
+            roc_auc scoring method
+            acc: the list of all cross-validations accuracy scores
+            auc: the list of all cross-validations roc_auc scores
+
+        if permutation is not None it also countains:
+            auc_pvalue: the pvalue using roc_auc as a scoring method
+            acc_pvalue: the pvalue using accuracy as a scoring method
+            auc_pscores: a list of all permutation auc scores
+            acc_pscores: a list of all permutation accuracy scores
+
+    '''
     y = np.asarray(y)
     X = np.asarray(X)
     if len(X) != len(y):
-        raise ValueError('Dimension mismatch for X and y : {}, {}'.format(len(X), len(y)))
+        raise ValueError(f'Dimension mismatch for X and y : {len(X)}, {len(y)}')
     if groups is not None:
         try:
             if len(y) != len(groups):
@@ -104,176 +152,13 @@ def classification(estimator, cv, X, y, groups=None, perm=None, n_jobs=1):
     return save
 
 
-
-# Covariance code
-def _lwf(X):
-    """Wrapper for sklearn ledoit wolf covariance estimator"""
-    C, _ = ledoit_wolf(X.T)
-    return C
-
-
-def _oas(X):
-    """Wrapper for sklearn oas covariance estimator"""
-    C, _ = oas(X.T)
-    return C
-
-
-def _scm(X):
-    """Wrapper for sklearn sample covariance estimator"""
-    return empirical_covariance(X.T)
-
-
-def _mcd(X):
-    """Wrapper for sklearn mcd covariance estimator"""
-    _, C, _, _ = fast_mcd(X.T)
-    return C
-
-
-def _check_est(est):
-    """Check if a given estimator is valid"""
-
-    # Check estimator exist and return the correct function
-    estimators = {
-        'cov': np.cov,
-        'scm': _scm,
-        'lwf': _lwf,
-        'oas': _oas,
-        'mcd': _mcd,
-        'corr': np.corrcoef
-    }
-
-    if callable(est):
-        # All good (cross your fingers)
-        pass
-    elif est in estimators.keys():
-        # Map the corresponding estimator
-        est = estimators[est]
-    else:
-        # raise an error
-        raise ValueError(
-            """%s is not an valid estimator ! Valid estimators are : %s or a
-             callable function""" % (est, (' , ').join(estimators.keys())))
-    return est
-
-
-def covariances(X, estimator='cov'):
-    """Estimation of covariance matrix."""
-    est = _check_est(estimator)
-    Nt, Ne, Ns = X.shape
-    covmats = np.zeros((Nt, Ne, Ne))
-    for i in range(Nt):
-        covmats[i, :, :] = est(X[i, :, :])
-    return covmats
-
-
-def covariances_EP(X, P, estimator='cov'):
-    """Special form covariance matrix."""
-    est = _check_est(estimator)
-    Nt, Ne, Ns = X.shape
-    Np, Ns = P.shape
-    covmats = np.zeros((Nt, Ne + Np, Ne + Np))
-    for i in range(Nt):
-        covmats[i, :, :] = est(np.concatenate((P, X[i, :, :]), axis=0))
-    return covmats
-
-
-def eegtocov(sig, window=128, overlapp=0.5, padding=True, estimator='cov'):
-    """Convert EEG signal to covariance using sliding window"""
-    est = _check_est(estimator)
-    X = []
-    if padding:
-        padd = np.zeros((int(window / 2), sig.shape[1]))
-        sig = np.concatenate((padd, sig, padd), axis=0)
-
-    Ns, Ne = sig.shape
-    jump = int(window * overlapp)
-    ix = 0
-    while (ix + window < Ns):
-        X.append(est(sig[ix:ix + window, :].T))
-        ix = ix + jump
-
-    return np.array(X)
-
-
-def coherence(X, window=128, overlap=0.75, fmin=None, fmax=None, fs=None):
-    """Compute coherence."""
-    n_chan = X.shape[0]
-    overlap = int(overlap * window)
-    ij = []
-    if fs is None:
-        fs = window
-    for i in range(n_chan):
-        for j in range(i+1, n_chan):
-            ij.append((i, j))
-    Cxy, Phase, freqs = mlab.cohere_pairs(X.T, ij, NFFT=window, Fs=fs,
-                                          noverlap=overlap)
-
-    if fmin is None:
-        fmin = freqs[0]
-    if fmax is None:
-        fmax = freqs[-1]
-
-    index_f = (freqs >= fmin) & (freqs <= fmax)
-    freqs = freqs[index_f]
-
-    # reshape coherence
-    coh = np.zeros((n_chan, n_chan, len(freqs)))
-    for i in range(n_chan):
-        coh[i, i] = 1
-        for j in range(i + 1, n_chan):
-            coh[i, j] = coh[j, i] = Cxy[(i, j)][index_f]
-    return coh
-
-
-def cospectrum(X, window=128, overlap=0.75, fmin=None, fmax=None, fs=None):
-    """Compute Cospectrum."""
-    Ne, Ns = X.shape
-    number_freqs = int(window / 2)
-
-    step = int((1.0 - overlap) * window)
-    step = max(1, step)
-
-    number_windows = int((Ns - window) / step + 1)
-    # pre-allocation of memory
-    fdata = np.zeros((*map(int, (number_windows, Ne, number_freqs))),
-                     dtype=complex)
-    win = np.hanning(window)
-
-    # Loop on all frequencies
-    for window_ix in range(int(number_windows)):
-
-        # time markers to select the data
-        # marker of the beginning of the time window
-        t1 = int(window_ix * step)
-        # marker of the end of the time window
-        t2 = int(t1 + window)
-        # select current window and apodize it
-        cdata = X[:, t1:t2] * win
-
-        # FFT calculation
-        fdata[window_ix, :, :] = np.fft.fft(
-            cdata, n=window, axis=1)[:, 0:number_freqs]
-
-    # Adjust Frequency range to specified range (in case it is a parameter)
-    if fmin is not None:
-        f = np.arange(0, 1, 1.0 / number_freqs) * (fs / 2.0)
-        Fix = (f >= fmin) & (f <= fmax)
-        fdata = fdata[:, :, Fix]
-
-    # Efficiently compute the matrix product of fdata.conj().T by fdata
-    # for each frequency
-    S = np.einsum('abc,adc->bdc', fdata.conj(), fdata) / number_windows
-
-    return S
-# END COVARIANCE CODE
-
-
 def compute_pval(score, perm_scores):
-    N_PERM = len(perm_scores) + 1
+    '''computes pvalue of an item in a distribution)'''
+    n_perm = len(perm_scores) + 1
     pvalue = 0
-    for sc in perm_scores:
-        if score <= sc:
-            pvalue += 1/N_PERM
+    for psc in perm_scores:
+        if score <= psc:
+            pvalue += 1/n_perm
     return pvalue
 
 
@@ -311,73 +196,12 @@ def computePSD(signal, window, overlap, fmin, fmax, fs):
     return psd
 
 
-def classif_choice(classif):
-    """Select the classifier and parameters."""
-    params = {}
-    if classif == 'MDM':
-        clf = MDM()
-    elif classif == 'Logistic Regression':
-        clf = TSclassifier()
-    elif classif == 'SVM':
-        svm = SVC()
-        # params = {'clf__C': expon(scale=100), 'clf__gamma': expon(scale=.1),
-        #           'clf__kernel': ['rbf'], 'clf__class_weight': ['balanced']}
-        clf = TSclassifier(clf=svm)
-    elif classif == 'LDA':
-        lda = LDA()
-        clf = TSclassifier(clf=lda)
-    elif classif == 'Random Forest':
-        rf = RF()
-        clf = TSclassifier(clf=rf)
-    return clf, params
-
-
-def set_parameters(clf, classif, params):
-    """Set the right parameters."""
-    if classif == 'SVM':
-        clf.set_params(clf__C=params['clf__C'])
-        clf.set_params(clf__gamma=params['clf__gamma'])
-        clf.set_params(clf__kernel=str(params['clf__kernel']))
-        clf.set_params(clf__class_weight=params['clf__class_weight'])
-    elif classif == 'Random Forest':
-        rf = RF()
-        clf = TSclassifier(clf=rf)
-    return clf
-
-
-# Old fonction not used anymore
-def prepare_params(save_path, classif, X, y, sleep_state, clf_choice, params, cross_val, groups=None):
-    """Load or Optimize best params for given clf, cv and params."""
-    file_path = save_path / '%s_%s_best_parameters.mat' % (classif, sleep_state)
-    if not file_path.isfile():
-        t2 = time()
-        print('Hyperparameter optimization...')
-        RS = RandomizedSearchCV(estimator=clf_choice,
-                                param_distributions=params,
-                                n_iter=50,
-                                n_jobs=-1,
-                                cv=cross_val).fit(X, y, groups=groups)
-        best_params = RS.best_params_
-        savemat(file_path, best_params)
-        print('Optimization done in %s' % elapsed_time(time(), t2))
-    else:
-        best_params = loadmat(file_path)
-    params = {}
-    for param in best_params.keys():
-        if not param.startswith('__'):
-            if len(best_params[param].shape) == 1:
-                params[param] = best_params[param][0]
-            elif len(best_params[param].shape) == 2:
-                params[param] = best_params[param][0, 0]
-    return params
-
-
 def create_groups(y):
     """Generate groups from labels of shape (subject x labels)."""
     k = 0
     groups = []
-    for i in range(len(y)):
-        for j in range(y[i].shape[1]):
+    for sub in y:
+        for _ in range(sub.shape[1]):
             groups.append(k)
         k += 1
     groups = np.asarray(groups).ravel()
@@ -385,7 +209,7 @@ def create_groups(y):
     return y, groups
 
 
-def elapsed_time(t0, t1):
+def elapsed_time(t0, t1, formating=True):
     """Time lapsed between t0 and t1.
 
     Returns the time (from time.time()) between t0 and t1 in a
@@ -402,22 +226,22 @@ def elapsed_time(t0, t1):
 
     """
     lapsed = abs(t1-t0)
-    m, h, j = 60, 3600, 24*3600
-    nbj = lapsed // j
-    nbh = (lapsed - j * nbj) // h
-    nbm = (lapsed - j * nbj - h * nbh) // m
-    nbs = lapsed - j * nbj - h * nbh - m * nbm
-    if lapsed > m:
-        if lapsed > h:
-            if lapsed > j:
-                Time = "%ij, %ih:%im:%is" % (nbj, nbh, nbm, nbs)
-            else:
-                Time = "%ih:%im:%is" % (nbh, nbm, nbs)
+    if formating:
+        m, h, j = 60, 3600, 24*3600
+        nbj = lapsed // j
+        nbh = (lapsed - j * nbj) // h
+        nbm = (lapsed - j * nbj - h * nbh) // m
+        nbs = lapsed - j * nbj - h * nbh - m * nbm
+        if lapsed > j:
+            formated_time = f"{nbj:.0f}j, {nbh:.0f}h:{nbm:.0f}m:{nbs:.0f}s"
+        elif lapsed > h:
+            formated_time = f"{nbh:.0f}h:{nbm:.0f}m:{nbs:.0f}s"
+        elif lapsed > m:
+            formated_time = f"{nbm:.0f}m:{nbs:.0f}s"
         else:
-            Time = "%im:%is" % (nbm, nbs)
-    else:
-        Time = "%is" % nbs
-    return Time
+            formated_time = f"{nbs:.4f}s"
+        return formated_time
+    return lapsed
 
 
 def prepare_data(dico, key='data', n_trials=None, random_state=None):
@@ -440,7 +264,7 @@ def prepare_data(dico, key='data', n_trials=None, random_state=None):
 
 def load_hypno(sub):
     HYPNO_PATH = path('/home/arthur/Documents/data/sleep_data/sleep_raw_data/hypnograms')
-    with open(HYPNO_PATH / 'hyp_per_s{}.txt'.format(sub)) as f:
+    with open(HYPNO_PATH / f'hyp_per_s{sub}.txt') as f:
         hypno = []
         for line in f:
             if line[0] not in ['-', '\n']:
@@ -477,9 +301,9 @@ def split_cycles(data, sub, duree=1200):
     return cycles
 
 
-def convert_sleep_data(data_path, subjectNumber, elec=None):
+def convert_sleep_data(data_path, sub_i, elec=None):
     """Load the samples of a subject for a sleepstate."""
-    tempFileName = data_path / "s%i_sleep.mat" % (subjectNumber)
+    tempFileName = data_path / "s%i_sleep.mat" % (sub_i)
     try:
         if elec is None:
             dataset = np.asarray(h5py.File(
@@ -489,7 +313,7 @@ def convert_sleep_data(data_path, subjectNumber, elec=None):
                 tempFileName, 'r')['m_data'])[:, elec]
     except(IOError):
         print(tempFileName, "not found")
-    cycles = split_cycles(dataset, subjectNumber)
+    cycles = split_cycles(dataset, sub_i)
     dataset = []
     for i, cycle in enumerate(cycles):
         for stage, secs in cycle.items():
@@ -497,62 +321,60 @@ def convert_sleep_data(data_path, subjectNumber, elec=None):
                 secs = np.array(secs)
                 save = np.concatenate(
                     [secs[i:i+30] for i in range(0, len(secs), 30)])
-                savemat(data_path / '{}_s{}_cycle{}'.format(
-                    stage, subjectNumber, i+1), {stage: save})
+                savemat(data_path / f'{stage}_s{sub_i}_cycle{i+1}',
+                        {stage: save})
 
 
-def merge_S3_S4(data_path, subjectNumber, cycle):
+def merge_S3_S4(data_path, sub_i, cycle):
     try:
-        S3_file = data_path / 'S3_s{}_cycle{}.mat'.format(subjectNumber, cycle)
+        S3_file = data_path / f'S3_s{sub_i}_cycle{cycle}.mat'
         S3 = loadmat(S3_file)['S3']
-        S4_file = data_path / 'S4_s{}_cycle{}.mat'.format(subjectNumber, cycle)
+        S4_file = data_path / f'S4_s{sub_i}_cycle{cycle}.mat'
         S4 = loadmat(S4_file)['S4']
         data = {'SWS': np.concatenate((S3, S4), axis=0)}
-        savemat(data_path / 'SWS_s{}_cycle{}.mat'.format(
-            subjectNumber, cycle), data)
+        savemat(data_path / f'SWS_s{sub_i}_cycle{cycle}.mat', data)
         S3_file.remove()
         S4_file.remove()
     except IOError:
         print('file not found for cycle', cycle)
 
 
-def merge_SWS(data_path, subjectNumber, cycle=None):
+def merge_SWS(data_path, sub_i, cycle=None):
     if cycle is None:
         for i in range(1, 4):
-            merge_S3_S4(data_path, subjectNumber, i)
+            merge_S3_S4(data_path, sub_i, i)
     else:
-        merge_S3_S4(data_path, subjectNumber, cycle)
+        merge_S3_S4(data_path, sub_i, cycle)
 
 
-def load_full_sleep(data_path, subjectNumber, sleep_state,
+def load_full_sleep(data_path, sub_i, state,
                     cycle=None):
     """Load the samples of a subject for a sleepstate."""
-    tempFileName = data_path / "%s_s%i.mat" % (sleep_state, subjectNumber)
+    tempFileName = data_path / f"{state}_s{sub_i}.mat"
     if cycle is not None:
-        tempFileName = data_path / "{}_s{}_cycle{}.mat".format(
-            sleep_state, subjectNumber, cycle)
+        tempFileName = data_path / f"{state}_s{sub_i}_cycle{cycle}.mat"
     try:
-        dataset = loadmat(tempFileName)[sleep_state]
+        dataset = loadmat(tempFileName)[state]
     except(IOError, TypeError) as e:
         print(tempFileName, "not found")
         dataset = None
     return dataset
 
 
-def load_samples(data_path, subjectNumber, sleep_state, cycle=None, elec=None):
+def load_samples(data_path, sub_i, state, cycle=None, elec=None):
     """Load the samples of a subject for a sleepstate."""
     if elec is None:
         dataset = load_full_sleep(
-            data_path, subjectNumber, sleep_state, cycle)[:19]
+            data_path, sub_i, state, cycle)[:19]
     else:
         dataset = load_full_sleep(
-            data_path, subjectNumber, sleep_state, cycle)[elec]
+            data_path, sub_i, state, cycle)[elec]
     dataset = dataset.swapaxes(0, 2)
     dataset = dataset.swapaxes(1, 2)
     return dataset
 
 
-def import_data(data_path, sleep_state, subject_list,
+def import_data(data_path, state, subject_list,
                 label_path=None, full_trial=False):
     """Transform the data and generate labels.
 
@@ -564,7 +386,7 @@ def import_data(data_path, sleep_state, subject_list,
     print("Loading data...")
     for i in range(len(subject_list)):
         # Loading of the trials of the selected sleepstate
-        dataset = load_samples(data_path, subject_list[i], sleep_state)
+        dataset = load_samples(data_path, subject_list[i], state)
 
         if full_trial:
             # use if you want full trial
@@ -575,7 +397,7 @@ def import_data(data_path, sleep_state, subject_list,
         del dataset
 
     if label_path is not None:
-        y = loadmat(label_path / sleep_state + '_labels.mat')['y'].ravel()
+        y = loadmat(label_path / state + '_labels.mat')['y'].ravel()
     return X, np.asarray(y)
 
 
