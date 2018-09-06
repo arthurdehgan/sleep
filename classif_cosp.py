@@ -21,10 +21,10 @@ from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW, OVERLAP, LABEL_PATH
 
 # PREFIX = 'perm_'
 # PREFIX = 'classif_'
-# PREFIX = 'classif_reduced_'
-PREFIX = "bootstrapped_classif_"
-NAME = "subsamp_cosp"
-# NAME = 'cosp'
+PREFIX = "reduced_classif_"
+# PREFIX = "bootstrapped_classif_"
+# NAME = "subsamp_cosp"
+NAME = "cosp"
 # NAME = 'ft_cosp'
 # NAME = 'moy_cosp'
 # NAME = 'im_cosp'
