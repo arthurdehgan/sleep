@@ -3,84 +3,118 @@
 Author: Arthur Dehgan"""
 import os
 from time import time
-from path import Path as path
+from itertools import product
 from joblib import Parallel, delayed
 import numpy as np
 from scipy.io import savemat, loadmat
-from utils import elapsed_time, load_samples
-from params import DATA_PATH, SAVE_PATH, SUBJECT_LIST, \
-                   FREQ_DICT, STATE_LIST, SF, WINDOW, OVERLAP
+from utils import elapsed_time
+
+# from utils import load_samples
+from utils import load_full_sleep, load_samples
+from params import (
+    DATA_PATH,
+    SAVE_PATH,
+    SUBJECT_LIST,
+    FREQ_DICT,
+    STATE_LIST,
+    SF,
+    WINDOW,
+    OVERLAP,
+)
 
 IMAG = False
-FULL_TRIAL = True
+FULL_TRIAL = False
 if IMAG:
     from pyriemann.estimationmod import CospCovariances
 else:
     from pyriemann.estimation import CospCovariances
 if IMAG:
-    prefix = 'im_cosp'
+    prefix = "im_cosp"
 elif FULL_TRIAL:
-    prefix = 'ft_cosp'
+    prefix = "ft_cosp"
 else:
-    prefix = 'cosp'
+    prefix = "cosp"
 
-SAVE_PATH = SAVE_PATH / 'crosspectre/'
+SAVE_PATH = SAVE_PATH / "cosp/"
 
 
-def combine_subjects(state, freq, window, overlap):
+def combine_subjects(state, freq, window, overlap, cycle=None):
     """Combines crosspectrum matrices from subjects into one."""
     dat, load_list = [], []
     print(state, freq)
     for sub in SUBJECT_LIST:
-        pattern = prefix + '_s{}_{}_{}_{}_{:.2f}.mat'
-        save_pattern = prefix + '_{}_{}_{}_{:.2f}.mat'
-        file_path = path(SAVE_PATH / pattern.format(
-            sub, state, freq, window, overlap))
+        file_path = SAVE_PATH / prefix + "_s{}_{}_{}_{}_{:.2f}.mat".format(
+            sub, state, freq, window, overlap
+        )
+        save_file_path = SAVE_PATH / prefix + "_{}_{}_{}_{:.2f}.mat".format(
+            state, freq, window, overlap
+        )
+        if cycle is not None:
+            file_path = SAVE_PATH / prefix + "_s{}_{}_cycle{}_{}_{}_{:.2f}.mat".format(
+                sub, state, cycle, freq, window, overlap
+            )
+            save_file_path = SAVE_PATH / prefix + "_{}_cycle{}_{}_{}_{:.2f}.mat".format(
+                state, cycle, freq, window, overlap
+            )
         try:
-            data = loadmat(file_path)['data']
+            data = loadmat(file_path)["data"]
             dat.append(data)
             load_list.append(str(file_path))
-        except IOError:
+        except (IOError, TypeError) as e:
             print(file_path, "not found")
-    savemat(SAVE_PATH / save_pattern.format(state, freq, window, overlap),
-            {'data': np.asarray(dat)})
+    savemat(save_file_path, {"data": np.asarray(dat)})
     for f in load_list:
         os.remove(f)
 
 
-def compute_cosp(state, freq, window, overlap):
+def compute_cosp(state, freq, window, overlap, cycle=None):
     """Computes the crosspectrum matrices per subjects."""
-    print(state, freq)
+    if cycle is not None:
+        print(state, freq, cycle)
+    else:
+        print(state, freq)
     freqs = FREQ_DICT[freq]
     for sub in SUBJECT_LIST:
-        pattern = prefix + '_s{}_{}_{}_{}_{:.2f}.mat'
-        file_path = path(SAVE_PATH / pattern.format(
-            sub, state, freq, window, overlap))
+        if cycle is None:
+            file_path = SAVE_PATH / prefix + "_s{}_{}_{}_{}_{:.2f}.mat".format(
+                sub, state, freq, window, overlap
+            )
+        else:
+            file_path = SAVE_PATH / prefix + "_s{}_{}_cycle{}_{}_{}_{:.2f}.mat".format(
+                sub, state, cycle, freq, window, overlap
+            )
 
         if not file_path.isfile():
             # data must be of shape n_trials x n_elec x n_samples
-            data = load_samples(DATA_PATH, sub, state)
+            if cycle is not None:
+                data = load_full_sleep(DATA_PATH, sub, state, cycle)
+                if data is None:
+                    continue
+                data = data.swapaxes(1, 2)
+            else:
+                data = load_samples(DATA_PATH, sub, state)
             if FULL_TRIAL:
                 data = np.concatenate(data, axis=1)
                 data = data.reshape(1, data.shape[0], data.shape[1])
-            cov = CospCovariances(window=window, overlap=overlap,
-                                  fmin=freqs[0], fmax=freqs[1], fs=SF)
+            cov = CospCovariances(
+                window=window, overlap=overlap, fmin=freqs[0], fmax=freqs[1], fs=SF
+            )
             mat = cov.fit_transform(data)
             if len(mat.shape) > 3:
                 mat = np.mean(mat, axis=-1)
 
-            savemat(file_path, {'data': mat})
+            savemat(file_path, {"data": mat})
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     T_START = time()
-    Parallel(n_jobs=-1)(delayed(compute_cosp)(
-        state, freq, WINDOW, OVERLAP)
-                        for state in STATE_LIST
-                        for freq in FREQ_DICT)
-    print('combining subjects data')
-    Parallel(n_jobs=-1)(delayed(combine_subjects)(
-        state, freq, WINDOW, OVERLAP)
-                        for state in STATE_LIST
-                        for freq in FREQ_DICT)
-    print('total time lapsed : %s' % elapsed_time(T_START, time()))
+    Parallel(n_jobs=-1)(
+        delayed(compute_cosp)(state, freq, WINDOW, OVERLAP, cycle)
+        for state, freq, cycle in product(STATE_LIST, FREQ_DICT, range(1, 4))
+    )
+    print("combining subjects data")
+    Parallel(n_jobs=-1)(
+        delayed(combine_subjects)(state, freq, WINDOW, OVERLAP, cycle)
+        for state, freq, cycle in product(STATE_LIST, FREQ_DICT, range(1, 4))
+    )
+    print("total time lapsed : %s" % elapsed_time(T_START, time()))

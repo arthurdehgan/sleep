@@ -13,13 +13,13 @@ from scipy.signal import welch
 import h5py
 import numpy as np
 from numpy.random import permutation
-# from matplotlib import pyplot as plt
 from path import Path as path
 from joblib import Parallel, delayed
 
 
 def timer(func):
-    '''Decorator to compute time spend for the wrapped function'''
+    """Decorator to compute time spend for the wrapped function"""
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         start_time = time.perf_counter()
@@ -27,11 +27,12 @@ def timer(func):
         time_diff = elapsed_time(start_time, time.perf_counter())
         print(f'"{func.__name__}" executed in {time_diff}')
         return val
+
     return wrapper
 
 
 def _cross_val(train_index, test_index, estimator, X, y):
-    '''Computes predictions for a subset of data.'''
+    """Computes predictions for a subset of data."""
     clf = clone(estimator)
     x_train, x_test = X[train_index], X[test_index]
     y_train, y_test = y[train_index], y[test_index]
@@ -41,13 +42,14 @@ def _cross_val(train_index, test_index, estimator, X, y):
 
 
 def cross_val_scores(estimator, cv, X, y, groups=None, n_jobs=1):
-    '''Computes all crossval on the chosen estimator, cross-val and dataset.
+    """Computes all crossval on the chosen estimator, cross-val and dataset.
     To use instead of sklearn cross_val_score if you want both roc_auc and
-    acc in one go.'''
+    acc in one go."""
     clf = clone(estimator)
-    results = (Parallel(n_jobs=n_jobs)(
+    results = Parallel(n_jobs=n_jobs)(
         delayed(_cross_val)(train_index, test_index, clf, X, y)
-        for train_index, test_index in cv.split(X=X, y=y, groups=groups)))
+        for train_index, test_index in cv.split(X=X, y=y, groups=groups)
+    )
 
     accuracy, auc_list = [], []
     for test in results:
@@ -61,7 +63,7 @@ def cross_val_scores(estimator, cv, X, y, groups=None, n_jobs=1):
 
 
 def _permutations(iterable, size, limit=None):
-    '''Combinations Generator'''
+    """Combinations Generator"""
     i = 0
     for elem in permutations(iterable, size):
         yield elem
@@ -71,14 +73,13 @@ def _permutations(iterable, size, limit=None):
 
 
 def permutation_test(estimator, cv, X, y, groups=None, n_perm=0, n_jobs=1):
-    '''Will do compute permutations aucs and accs.'''
+    """Will do compute permutations aucs and accs."""
     acc_pscores, auc_pscores = [], []
     for _ in range(n_perm):
         perm_index = permutation(len(y))
         clf = clone(estimator)
         y_perm = y[perm_index]
-        perm_acc, perm_auc = cross_val_scores(clf, cv, X,
-                                              y_perm, groups, n_jobs)
+        perm_acc, perm_auc = cross_val_scores(clf, cv, X, y_perm, groups, n_jobs)
         acc_pscores.append(np.mean(perm_acc))
         auc_pscores.append(np.mean(perm_auc))
 
@@ -86,7 +87,7 @@ def permutation_test(estimator, cv, X, y, groups=None, n_perm=0, n_jobs=1):
 
 
 def classification(estimator, cv, X, y, groups=None, perm=None, n_jobs=1):
-    '''Do a classification.
+    """Do a classification.
 
     Parameters:
         estimator: a classifier object from sklearn
@@ -121,44 +122,55 @@ def classification(estimator, cv, X, y, groups=None, perm=None, n_jobs=1):
             auc_pscores: a list of all permutation auc scores
             acc_pscores: a list of all permutation accuracy scores
 
-    '''
+    """
     y = np.asarray(y)
     X = np.asarray(X)
     if len(X) != len(y):
-        raise ValueError(f'Dimension mismatch for X and y : {len(X)}, {len(y)}')
+        raise ValueError(f"Dimension mismatch for X and y : {len(X)}, {len(y)}")
     if groups is not None:
         try:
             if len(y) != len(groups):
-                raise ValueError('dimension mismatch for groups and y')
+                raise ValueError("dimension mismatch for groups and y")
         except TypeError:
-            print('Error in classification: y or',
-                  'groups is not a list or similar structure')
+            print(
+                "Error in classification: y or",
+                "groups is not a list or similar structure",
+            )
             exit()
     clf = clone(estimator)
     accuracies, aucs = cross_val_scores(clf, cv, X, y, groups, n_jobs)
     acc_score = np.mean(accuracies)
     auc_score = np.mean(aucs)
-    save = {'acc_score': acc_score, 'auc_score': auc_score,
-            'acc': accuracies, 'auc': aucs}
+    save = {
+        "acc_score": acc_score,
+        "auc_score": auc_score,
+        "acc": accuracies,
+        "auc": aucs,
+    }
     if perm is not None:
-        acc_pscores, auc_pscores = permutation_test(clf, cv, X, y,
-                                                    groups, perm, n_jobs)
+        acc_pscores, auc_pscores = permutation_test(clf, cv, X, y, groups, perm, n_jobs)
         acc_pvalue = compute_pval(acc_score, acc_pscores)
         auc_pvalue = compute_pval(auc_score, auc_pscores)
 
-        save.update({'auc_pvalue': auc_pvalue, 'acc_pvalue': acc_pvalue,
-                     'auc_pscores': auc_pscores, 'acc_pscores': acc_pscores})
+        save.update(
+            {
+                "auc_pvalue": auc_pvalue,
+                "acc_pvalue": acc_pvalue,
+                "auc_pscores": auc_pscores,
+                "acc_pscores": acc_pscores,
+            }
+        )
 
     return save
 
 
 def compute_pval(score, perm_scores):
-    '''computes pvalue of an item in a distribution)'''
+    """computes pvalue of an item in a distribution)"""
     n_perm = len(perm_scores) + 1
     pvalue = 0
     for psc in perm_scores:
         if score <= psc:
-            pvalue += 1/n_perm
+            pvalue += 1 / n_perm
     return pvalue
 
 
@@ -182,7 +194,7 @@ def is_strat(y, groups=None, test_group=None):
     for i in indx:
         labels.append(y[i])
     labels = np.asarray(labels)
-    if len(np.where(labels == 1)[0]) == check/2:
+    if len(np.where(labels == 1)[0]) == check / 2:
         return True
     else:
         return False
@@ -190,22 +202,24 @@ def is_strat(y, groups=None, test_group=None):
 
 def computePSD(signal, window, overlap, fmin, fmax, fs):
     """Compute PSD."""
-    f, psd = welch(signal, fs=fs, window='hamming', nperseg=window,
-                   noverlap=overlap, nfft=None)
-    psd = np.mean(psd[(f >= fmin)*(f <= fmax)])
+    f, psd = welch(
+        signal, fs=fs, window="hamming", nperseg=window, noverlap=overlap, nfft=None
+    )
+    psd = np.mean(psd[(f >= fmin) * (f <= fmax)])
     return psd
 
 
 def create_groups(y):
     """Generate groups from labels of shape (subject x labels)."""
     k = 0
+    y = np.asarray(y)
     groups = []
     for sub in y:
-        for _ in range(sub.shape[1]):
+        for _ in range(len(sub)):
             groups.append(k)
         k += 1
     groups = np.asarray(groups).ravel()
-    y = np.concatenate(y[range(len(y))], axis=1).ravel()
+    y = np.concatenate(y[:], axis=0).ravel()
     return y, groups
 
 
@@ -225,9 +239,9 @@ def elapsed_time(t0, t1, formating=True):
         or the execution of a function.
 
     """
-    lapsed = abs(t1-t0)
+    lapsed = abs(t1 - t0)
     if formating:
-        m, h, j = 60, 3600, 24*3600
+        m, h, j = 60, 3600, 24 * 3600
         nbj = lapsed // j
         nbh = (lapsed - j * nbj) // h
         nbm = (lapsed - j * nbj - h * nbh) // m
@@ -244,7 +258,7 @@ def elapsed_time(t0, t1, formating=True):
     return lapsed
 
 
-def prepare_data(dico, key='data', n_trials=None, random_state=None):
+def prepare_data(dico, key="data", n_trials=None, random_state=None):
     data = dico[key].ravel()
     final_data = None
     for submat in data:
@@ -252,34 +266,40 @@ def prepare_data(dico, key='data', n_trials=None, random_state=None):
             submat = submat.ravel()
         if n_trials is not None:
             index = np.random.RandomState(random_state).choice(
-                range(len(submat)), n_trials, replace=False)
+                range(len(submat)), n_trials, replace=False
+            )
             prep_submat = submat[index]
         else:
             prep_submat = submat
-        final_data = prep_submat if final_data is None else np.concatenate(
-            (prep_submat, final_data))
+        final_data = (
+            prep_submat
+            if final_data is None
+            else np.concatenate((prep_submat, final_data))
+        )
 
     return np.asarray(final_data)
 
 
 def load_hypno(sub):
-    HYPNO_PATH = path('/home/arthur/Documents/data/sleep_data/sleep_raw_data/hypnograms')
-    with open(HYPNO_PATH / f'hyp_per_s{sub}.txt') as f:
+    HYPNO_PATH = path(
+        "/home/arthur/Documents/data/sleep_data/sleep_raw_data/hypnograms"
+    )
+    with open(HYPNO_PATH / f"hyp_per_s{sub}.txt") as f:
         hypno = []
         for line in f:
-            if line[0] not in ['-', '\n']:
+            if line[0] not in ["-", "\n"]:
                 hypno.append(line[0])
     return hypno
 
 
 # def visu_hypno(sub):
-    # hypno = list(map(int, load_hypno(sub)))
-    # plt.plot(hypno)
-    # plt.show()
+# hypno = list(map(int, load_hypno(sub)))
+# plt.plot(hypno)
+# plt.show()
 
 
 def empty_stage_dict():
-    stages = ['S1', 'S2', 'S3', 'S4', 'REM']
+    stages = ["S1", "S2", "S3", "S4", "REM"]
     stage_dict = {}
     for st in stages:
         stage_dict[st] = []
@@ -287,16 +307,16 @@ def empty_stage_dict():
 
 
 def split_cycles(data, sub, duree=1200):
-    stages = ['S1', 'S2', 'S3', 'S4', 'REM']
-    ref = '12345'
+    stages = ["S1", "S2", "S3", "S4", "REM"]
+    ref = "12345"
     cycles = [empty_stage_dict()]
     hypno = load_hypno(sub)
     for i, hyp in enumerate(hypno):
-        next_hyps = hypno[i+1:i+1 + duree]
-        obs = data[i*1000:(i+1)*1000]
+        next_hyps = hypno[i + 1 : i + 1 + duree]
+        obs = data[i * 1000 : (i + 1) * 1000]
         if hyp in ref:
             cycles[-1][stages[ref.index(hyp)]].append(obs)
-            if hyp == '5' and '5' not in next_hyps and len(cycles[-1]['REM']) >= 300:
+            if hyp == "5" and "5" not in next_hyps and len(cycles[-1]["REM"]) >= 300:
                 cycles.append(dict(empty_stage_dict()))
     return cycles
 
@@ -306,12 +326,10 @@ def convert_sleep_data(data_path, sub_i, elec=None):
     tempFileName = data_path / "s%i_sleep.mat" % (sub_i)
     try:
         if elec is None:
-            dataset = np.asarray(h5py.File(
-                tempFileName, 'r')['m_data'])[:, :19]
+            dataset = np.asarray(h5py.File(tempFileName, "r")["m_data"])[:, :19]
         else:
-            dataset = np.asarray(h5py.File(
-                tempFileName, 'r')['m_data'])[:, elec]
-    except(IOError):
+            dataset = np.asarray(h5py.File(tempFileName, "r")["m_data"])[:, elec]
+    except (IOError):
         print(tempFileName, "not found")
     cycles = split_cycles(dataset, sub_i)
     dataset = []
@@ -320,23 +338,23 @@ def convert_sleep_data(data_path, sub_i, elec=None):
             if len(secs) != 0:
                 secs = np.array(secs)
                 save = np.concatenate(
-                    [secs[i:i+30] for i in range(0, len(secs), 30)])
-                savemat(data_path / f'{stage}_s{sub_i}_cycle{i+1}',
-                        {stage: save})
+                    [secs[i : i + 30] for i in range(0, len(secs), 30)]
+                )
+                savemat(data_path / f"{stage}_s{sub_i}_cycle{i+1}", {stage: save})
 
 
 def merge_S3_S4(data_path, sub_i, cycle):
     try:
-        S3_file = data_path / f'S3_s{sub_i}_cycle{cycle}.mat'
-        S3 = loadmat(S3_file)['S3']
-        S4_file = data_path / f'S4_s{sub_i}_cycle{cycle}.mat'
-        S4 = loadmat(S4_file)['S4']
-        data = {'SWS': np.concatenate((S3, S4), axis=0)}
-        savemat(data_path / f'SWS_s{sub_i}_cycle{cycle}.mat', data)
+        S3_file = data_path / f"S3_s{sub_i}_cycle{cycle}.mat"
+        S3 = loadmat(S3_file)["S3"]
+        S4_file = data_path / f"S4_s{sub_i}_cycle{cycle}.mat"
+        S4 = loadmat(S4_file)["S4"]
+        data = {"SWS": np.concatenate((S3, S4), axis=0)}
+        savemat(data_path / f"SWS_s{sub_i}_cycle{cycle}.mat", data)
         S3_file.remove()
         S4_file.remove()
     except IOError:
-        print('file not found for cycle', cycle)
+        print("file not found for cycle", cycle)
 
 
 def merge_SWS(data_path, sub_i, cycle=None):
@@ -347,15 +365,14 @@ def merge_SWS(data_path, sub_i, cycle=None):
         merge_S3_S4(data_path, sub_i, cycle)
 
 
-def load_full_sleep(data_path, sub_i, state,
-                    cycle=None):
+def load_full_sleep(data_path, sub_i, state, cycle=None):
     """Load the samples of a subject for a sleepstate."""
     tempFileName = data_path / f"{state}_s{sub_i}.mat"
     if cycle is not None:
         tempFileName = data_path / f"{state}_s{sub_i}_cycle{cycle}.mat"
     try:
         dataset = loadmat(tempFileName)[state]
-    except(IOError, TypeError) as e:
+    except (IOError, TypeError) as e:
         print(tempFileName, "not found")
         dataset = None
     return dataset
@@ -364,18 +381,15 @@ def load_full_sleep(data_path, sub_i, state,
 def load_samples(data_path, sub_i, state, cycle=None, elec=None):
     """Load the samples of a subject for a sleepstate."""
     if elec is None:
-        dataset = load_full_sleep(
-            data_path, sub_i, state, cycle)[:19]
+        dataset = load_full_sleep(data_path, sub_i, state, cycle)[:19]
     else:
-        dataset = load_full_sleep(
-            data_path, sub_i, state, cycle)[elec]
+        dataset = load_full_sleep(data_path, sub_i, state, cycle)[elec]
     dataset = dataset.swapaxes(0, 2)
     dataset = dataset.swapaxes(1, 2)
     return dataset
 
 
-def import_data(data_path, state, subject_list,
-                label_path=None, full_trial=False):
+def import_data(data_path, state, subject_list, label_path=None, full_trial=False):
     """Transform the data and generate labels.
 
     Takes the original files and put them in a matrix of
@@ -397,7 +411,7 @@ def import_data(data_path, state, subject_list,
         del dataset
 
     if label_path is not None:
-        y = loadmat(label_path / state + '_labels.mat')['y'].ravel()
+        y = loadmat(label_path / state + "_labels.mat")["y"].ravel()
     return X, np.asarray(y)
 
 
@@ -408,7 +422,7 @@ def is_signif(pvalue, p=0.05):
     """
     answer = False
     if pvalue <= p:
-            answer = True
+        answer = True
     return answer
 
 
@@ -536,7 +550,8 @@ class StratifiedLeavePGroupsOut(BaseStratCrossValidator):
                 "The groups parameter contains fewer than (or equal to) "
                 "n_groups (%d) numbers of unique groups (%s). LeavePGroupsOut "
                 "expects that at least n_groups + 1 (%d) unique groups be "
-                "present" % (self.n_groups, unique_groups, self.n_groups + 1))
+                "present" % (self.n_groups, unique_groups, self.n_groups + 1)
+            )
         # unique_groups = np.delete(unique_groups,
         #                           np.where(group_counts < len(X)/(2*len(unique_groups))))
         combi = combinations(range(len(unique_groups)), self.n_groups)
@@ -545,10 +560,10 @@ class StratifiedLeavePGroupsOut(BaseStratCrossValidator):
             for l in unique_groups[np.array(indices)]:
                 test_index[groups == l] = True
 
-            if len(test_index) > len(X)/(2*len(unique_groups)):
+            if len(test_index) > len(X) / (2 * len(unique_groups)):
                 yield test_index
 
-# Unused not working
+    # Unused not working
     def get_n_splits(self, X, y, groups):
         """Returns the number of splitting iterations in the cross-validator.
 
@@ -579,15 +594,20 @@ class StratifiedLeavePGroupsOut(BaseStratCrossValidator):
 def _build_repr(self):
     # XXX This is copied from BaseEstimator's get_params
     cls = self.__class__
-    init = getattr(cls.__init__, 'deprecated_original', cls.__init__)
+    init = getattr(cls.__init__, "deprecated_original", cls.__init__)
     # Ignore varargs, kw and default values and pop self
     init_signature = signature(init)
     # Consider the constructor parameters excluding 'self'
     if init is object.__init__:
         args = []
     else:
-        args = sorted([p.name for p in init_signature.parameters.values()
-                       if p.name != 'self' and p.kind != p.VAR_KEYWORD])
+        args = sorted(
+            [
+                p.name
+                for p in init_signature.parameters.values()
+                if p.name != "self" and p.kind != p.VAR_KEYWORD
+            ]
+        )
     class_name = self.__class__.__name__
     params = dict()
     for key in args:
@@ -606,9 +626,8 @@ def _build_repr(self):
             warnings.filters.pop(0)
         params[key] = value
 
-    return '%s(%s)' % (class_name, _pprint(params, offset=len(class_name)))
+    return "%s(%s)" % (class_name, _pprint(params, offset=len(class_name)))
 
 
 def StratifiedLeave2GroupsOut():
     return StratifiedLeavePGroupsOut(n_groups=2)
-

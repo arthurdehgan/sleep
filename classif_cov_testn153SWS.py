@@ -34,6 +34,10 @@ N_BOOTSTRAPS = 10 if BOOTSTRAP else 1
 
 SAVE_PATH = SAVE_PATH / name
 
+##### FOR A TEST #####
+STATE_LIST = ["SWS"]
+##### FOR A TEST #####
+
 
 def main(state):
     """Where the magic happens"""
@@ -43,16 +47,19 @@ def main(state):
         groups = range(36)
     elif SUBSAMPLE:
         info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
+        ##### FOR A TEST #####
+        info_data = info_data["SWS"]
+        ##### FOR A TEST #####
         N_TRIALS = info_data.min().min()
         N_SUBS = len(info_data) - 1
-        groups = [i for i in range(N_SUBS) for _ in range(N_TRIALS)]
+        groups = [i for _ in range(N_TRIALS) for i in range(N_SUBS)]
         N_TOTAL = N_TRIALS * N_SUBS
         labels = [0 if i < N_TOTAL / 2 else 1 for i in range(N_TOTAL)]
     else:
         labels = loadmat(LABEL_PATH / state + "_labels.mat")["y"].ravel()
         labels, groups = create_groups(labels)
 
-    file_name = prefix + name + "_{}.mat".format(state)
+    file_name = prefix + name + "n153_{}.mat".format(state)
 
     save_file_path = SAVE_PATH / "results" / file_name
 

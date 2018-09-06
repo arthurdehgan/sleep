@@ -9,8 +9,16 @@ from joblib import Parallel, delayed
 from sys import maxsize
 
 
-def relative_perm(cond1, cond2, n_perm=0, correction='maxstat', method='indep',
-                  alpha=0.05, two_tailed=False, n_jobs=1):
+def relative_perm(
+    cond1,
+    cond2,
+    n_perm=0,
+    correction="maxstat",
+    method="indep",
+    alpha=0.05,
+    two_tailed=False,
+    n_jobs=1,
+):
     """compute relative changes (cond1 - cond2)/cond2
        with permuattions and correction.
 
@@ -48,20 +56,27 @@ def relative_perm(cond1, cond2, n_perm=0, correction='maxstat', method='indep',
 
     values = compute_relatives(cond1, cond2)
 
-    perm_t = perm_test(cond1, cond2, n_perm, compute_relatives,
-                       n_jobs=n_jobs)
+    perm_t = perm_test(cond1, cond2, n_perm, compute_relatives, n_jobs=n_jobs)
 
     pval = compute_pvalues(values, perm_t, two_tailed, correction=correction)
 
-    if correction in ['bonferroni', 'fdr']:
+    if correction in ["bonferroni", "fdr"]:
         pval = pvalues_correction(pval, correction, method)
 
     return values, pval
 
 
-def ttest_perm_unpaired(cond1, cond2, n_perm=0, correction='maxstat',
-                        method='indep', alpha=0.05, equal_var=False,
-                        two_tailed=False, n_jobs=1):
+def ttest_perm_unpaired(
+    cond1,
+    cond2,
+    n_perm=0,
+    correction="maxstat",
+    method="indep",
+    alpha=0.05,
+    equal_var=False,
+    two_tailed=False,
+    n_jobs=1,
+):
     """ttest indep with permuattions and maxstat correction
 
     Parameters:
@@ -100,12 +115,11 @@ def ttest_perm_unpaired(cond1, cond2, n_perm=0, correction='maxstat',
 
     tval, _ = ttest_ind(cond1, cond2, equal_var=equal_var)
 
-    perm_t = perm_test(cond1, cond2, n_perm, _ttest_perm,
-                       equal_var, n_jobs=n_jobs)
+    perm_t = perm_test(cond1, cond2, n_perm, _ttest_perm, equal_var, n_jobs=n_jobs)
 
     pval = compute_pvalues(tval, perm_t, two_tailed, correction=correction)
 
-    if correction in ['bonferroni', 'fdr']:
+    if correction in ["bonferroni", "fdr"]:
         pval = pvalues_correction(pval, correction, method)
 
     return tval, pval
@@ -141,19 +155,21 @@ def perm_test(cond1, cond2, n_perm, function, equal_var=False, n_jobs=-1):
     if n_perm >= n_comb - 1:
         # print("All permutations will be done. n_perm={}".format(n_comb - 1))
         if n_perm == 0:
-            print('size of the dataset does not allow {}' +
-                  'permutations, instead'.format(n_perm))
+            print(
+                "size of the dataset does not allow {}"
+                + "permutations, instead".format(n_perm)
+            )
 
         n_perm = n_comb
         print("All {} permutations will be done".format(n_perm))
     if n_perm > 9999:
-        print('Warning: permutation number is very high : {}'.format(n_perm))
-        print('it might take a while to compute ttest on all permutations')
+        print("Warning: permutation number is very high : {}".format(n_perm))
+        print("it might take a while to compute ttest on all permutations")
 
     perms_index = _combinations(range(n_samples), len(cond1), n_perm)
-    perm_t = Parallel(n_jobs=n_jobs)(delayed(function)
-                                     (full_mat, index, equal_var=equal_var)
-                                     for index in perms_index)
+    perm_t = Parallel(n_jobs=n_jobs)(
+        delayed(function)(full_mat, index, equal_var=equal_var) for index in perms_index
+    )
 
     return perm_t[1:]  # the first perm is not a permutation
 
@@ -181,7 +197,7 @@ def compute_pvalues(tval, perm_t, two_tailed, correction):
     if two_tailed:
         perm_t = abs(perm_t)
 
-    if correction == 'maxstat':
+    if correction == "maxstat":
         perm_t = np.asarray(perm_t).max(axis=1)
         perm_t = np.array([perm_t for _ in range(len(tval))]).T
 
@@ -190,7 +206,7 @@ def compute_pvalues(tval, perm_t, two_tailed, correction):
         compare_list = perm_t[:, i]
         for t_perm in compare_list:
             if tstat <= t_perm:
-                p_final += 1/scaling
+                p_final += 1 / scaling
         pvalues.append(p_final)
 
     pvalues = np.asarray(pvalues, dtype=np.float32)
@@ -216,27 +232,26 @@ def pvalues_correction(pvalues, correction, method):
     Returns:
         pvalues: list of corrected pvalues
     """
-    if correction == 'bonferroni':
+    if correction == "bonferroni":
         pvalues *= float(np.array(pvalues).size)
 
-    elif correction == 'fdr':
+    elif correction == "fdr":
         n_obs = len(pvalues)
         index_sorted_pvalues = np.argsort(pvalues)
         sorted_pvalues = pvalues[index_sorted_pvalues]
         sorted_index = index_sorted_pvalues.argsort()
         ecdf = (np.arange(n_obs) + 1) / float(n_obs)
 
-        if method == 'negcorr':
+        if method == "negcorr":
             cm = np.sum(1. / (np.arange(n_obs) + 1))
             ecdf /= cm
-        elif method == 'indep':
+        elif method == "indep":
             pass
         else:
-            raise ValueError(method, ' is not a valid method option')
+            raise ValueError(method, " is not a valid method option")
 
         raw_corrected_pvalues = sorted_pvalues / ecdf
-        corrected_pvalues = np.minimum.accumulate(
-            raw_corrected_pvalues[::-1])[::-1]
+        corrected_pvalues = np.minimum.accumulate(raw_corrected_pvalues[::-1])[::-1]
         pvalues = corrected_pvalues[sorted_index].reshape(n_obs)
 
     pvalues[pvalues > 1.0] = 1.0
@@ -275,12 +290,12 @@ def _generate_conds(data, index):
     index = list(index)
     index_comp = list(set(range(len(data))) - set(index))
     perm_mat = np.vstack((data[index], data[index_comp]))
-    cond1, cond2 = perm_mat[:len(index)], perm_mat[len(index):]
+    cond1, cond2 = perm_mat[: len(index)], perm_mat[len(index) :]
     return cond1, cond2
 
 
 def _combinations(iterable, r, limit=None):
-    '''combinations generator'''
+    """combinations generator"""
     i = 0
     for e in combinations(iterable, r):
         yield e
@@ -296,23 +311,24 @@ def _relative_perm(data, index, **kwargs):
 
 
 def _ttest_perm(data, index, equal_var):
-    '''ttest with the permutation index'''
+    """ttest with the permutation index"""
     cond1, cond2 = _generate_conds(data, index)
     return ttest_ind(cond1, cond2, equal_var=equal_var)[0]
 
 
 def _check_correction(correction):
     """Checks if correction is a correct option"""
-    if correction not in ['maxstat', 'bonferroni', 'fdr', None]:
-        raise ValueError(correction, 'is not a valid correction option')
+    if correction not in ["maxstat", "bonferroni", "fdr", None]:
+        raise ValueError(correction, "is not a valid correction option")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     cond1 = np.random.randn(10, 19)
     cond2 = np.random.randn(10, 19)
     tval, pval = ttest_perm_unpaired(cond1, cond2, n_perm=100)
-    tval4, pval4 = ttest_perm_unpaired(cond1, cond2, n_perm=100, correction='maxstat')
-    tval2, pval2 = ttest_perm_unpaired(cond1, cond2, n_perm=100, correction='bonferroni')
-    tval3, pval3 = ttest_perm_unpaired(cond1, cond2, n_perm=100, correction='fdr')
+    tval4, pval4 = ttest_perm_unpaired(cond1, cond2, n_perm=100, correction="maxstat")
+    tval2, pval2 = ttest_perm_unpaired(
+        cond1, cond2, n_perm=100, correction="bonferroni"
+    )
+    tval3, pval3 = ttest_perm_unpaired(cond1, cond2, n_perm=100, correction="fdr")
     val, pval4 = relative_perm(cond1, cond2, n_perm=10)
-
