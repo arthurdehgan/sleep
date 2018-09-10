@@ -32,7 +32,7 @@ from params import (
 
 # prefix = 'perm'
 # prefix = 'classif'
-prefix = "perm_subsamp"
+prefix = "bootstrapped_perm_subsamp_"
 SOLVER = "svd"  # 'svd' 'lsqr'
 
 pref_list = prefix.split("_")
@@ -40,7 +40,7 @@ BOOTSTRAP = "bootstrapped" in pref_list
 SUBSAMPLE = "subsamp" in pref_list
 PERM = "perm" in pref_list
 N_PERM = 999 if PERM else None
-N_BOOTSTRAPS = 10 if BOOTSTRAP else 1
+N_BOOTSTRAPS = 100 if BOOTSTRAP else 1
 
 SAVE_PATH = SAVE_PATH / "psd"
 
@@ -61,54 +61,51 @@ def main(state, elec):
     for freq in FREQ_DICT:
         print(state, elec, freq)
 
-        file_name = prefix + "_PSD_{}_{}_{}_{}_{:.2f}.mat".format(
+        data_file_name = "PSD_{}_{}_{}_{}_{:.2f}.mat".format(
             state, freq, elec, WINDOW, OVERLAP
         )
 
-        save_file_path = SAVE_PATH / "results" / file_name
+        save_file_name = prefix + data_file_name
+
+        data_file_path = SAVE_PATH / data_file_name
+
+        save_file_path = SAVE_PATH / "results" / save_file_name
 
         if not save_file_path.isfile():
-            data_file_path = SAVE_PATH / "PSD_{}_{}_{}_{}_{:.2f}.mat".format(
-                state, freq, elec, WINDOW, OVERLAP
-            )
+            for i in range(N_BOOTSTRAPS):
+                data = loadmat(data_file_path)
+                if SUBSAMPLE:
+                    data = prepare_data(data, n_trials=N_TRIALS, random_state=i)
+                else:
+                    data = prepare_data(data)
 
-            if path(data_file_path).isfile():
-                final_save = None
+                data = np.array(data).reshape(len(data), 1)
+                sl2go = StratifiedLeave2GroupsOut()
+                clf = LDA(solver=SOLVER)
+                save = classification(
+                    clf, sl2go, data, labels, groups, N_PERM, n_jobs=-1
+                )
 
-                for i in range(N_BOOTSTRAPS):
-                    data = loadmat(data_file_path)
-                    if SUBSAMPLE:
-                        data = prepare_data(data, n_trials=N_TRIALS, random_state=i)
-                    else:
-                        data = prepare_data(data)
-
-                    data = np.array(data).reshape(len(data), 1)
-                    sl2go = StratifiedLeave2GroupsOut()
-                    clf = LDA(solver=SOLVER)
-                    save = classification(
-                        clf, sl2go, data, labels, groups, N_PERM, n_jobs=-1
-                    )
-                    save["acc_bootstrap"] = [save["acc_score"]]
-                    save["auc_bootstrap"] = [save["auc_score"]]
-                    if final_save is None:
+                if BOOTSTRAP or REDUCED:
+                    if i == 0:
                         final_save = save
                     else:
-                        for key, value in final_save.items():
-                            final_save[key] = final_save[key] + save[key]
+                        for key, value in save.items():
+                            final_save[key] += value
 
-                savemat(save_file_path, final_save)
+            final_save["n_rep"] = N_BOOTSTRAPS
+            final_save["auc_score"] = final_save["auc_score"] / N_BOOTSTRAPS
+            final_save["acc_score"] = final_save["acc_score"] / N_BOOTSTRAPS
+            savemat(save_file_path, final_save)
 
-                if PERM:
-                    print(
-                        "{} : {:.2f} significatif a p={:.4f}".format(
-                            freq, save["acc_score"], save["acc_pvalue"]
-                        )
+            if PERM:
+                print(
+                    "{} : {:.2f} significatif a p={:.4f}".format(
+                        freq, final_save["acc_score"], final_save["acc_pvalue"]
                     )
-                else:
-                    print("{} : {:.2f}".format(freq, save["acc_score"]))
-
+                )
             else:
-                print(data_file_path.name + " Not found")
+                print("{} : {:.2f}".format(freq, save["acc_score"]))
 
 
 if __name__ == "__main__":
