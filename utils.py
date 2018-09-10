@@ -216,11 +216,11 @@ def create_groups(y):
     y = np.asarray(y)
     groups = []
     for sub in y:
-        for _ in range(len(sub)):
+        for _ in range(len(sub.ravel())):
             groups.append(k)
         k += 1
     groups = np.asarray(groups).ravel()
-    y = np.concatenate(y[:], axis=0).ravel()
+    y = np.concatenate([lab.ravel() for lab in y], axis=0).ravel()
     return y, groups
 
 
