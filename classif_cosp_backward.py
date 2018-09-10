@@ -65,7 +65,7 @@ def backward_selection(
 
     # Do classification
     save = classification(clf, cv=cv, X=data, y=labels, groups=groups, n_jobs=-1)
-    score = save["acc_score"]
+    score = np.mean(save["acc_score"])
 
     # removing ind from features
     reduced_data = []

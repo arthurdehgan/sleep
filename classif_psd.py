@@ -94,8 +94,8 @@ def main(state, elec):
                             final_save[key] += value
 
             final_save["n_rep"] = N_BOOTSTRAPS
-            final_save["auc_score"] = final_save["auc_score"] / N_BOOTSTRAPS
-            final_save["acc_score"] = final_save["acc_score"] / N_BOOTSTRAPS
+            final_save["auc_score"] = np.mean(final_save["auc_score"])
+            final_save["acc_score"] = np.mean(final_save["acc_score"])
             savemat(save_file_path, final_save)
 
             if PERM:

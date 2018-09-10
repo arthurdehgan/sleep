@@ -144,8 +144,8 @@ def classification(estimator, cv, X, y, groups=None, perm=None, n_jobs=1):
     acc_score = np.mean(accuracies)
     auc_score = np.mean(aucs)
     save = {
-        "acc_score": acc_score,
-        "auc_score": auc_score,
+        "acc_score": [acc_score],
+        "auc_score": [auc_score],
         "acc": accuracies,
         "auc": aucs,
     }

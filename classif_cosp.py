@@ -21,10 +21,10 @@ from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW, OVERLAP, LABEL_PATH
 
 # PREFIX = 'perm_'
 # PREFIX = 'classif_'
-# PREFIX = "reduced_classif_"
-PREFIX = "bootstrapped_classif_"
-NAME = "subsamp_cosp"
-# NAME = "cosp"
+PREFIX = "reduced_classif_"
+# PREFIX = "bootstrapped_classif_"
+# NAME = "subsamp_cosp"
+NAME = "cosp"
 # NAME = 'ft_cosp'
 # NAME = 'moy_cosp'
 # NAME = 'im_cosp'
@@ -80,8 +80,6 @@ def main(state, freq):
         data_file_path = SAVE_PATH / file_name
 
         if data_file_path.isfile():
-            final_save = {}
-
             data_og = loadmat(data_file_path)
             for i in range(N_BOOTSTRAPS):
                 if FULL_TRIAL:
@@ -115,8 +113,9 @@ def main(state, freq):
                             final_save[key] += value
 
             final_save["n_rep"] = N_BOOTSTRAPS
-            final_save["auc_score"] = final_save["auc_score"] / N_BOOTSTRAPS
-            final_save["acc_score"] = final_save["acc_score"] / N_BOOTSTRAPS
+            if BOOTSTRAP:
+                final_save["auc_score"] = np.mean(final_save["auc_score"])
+                final_save["acc_score"] = np.mean(final_save["acc_score"])
             savemat(file_path, final_save)
 
             print(
