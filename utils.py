@@ -178,10 +178,10 @@ def compute_pval(score, perm_scores):
 
 def gen_dif_index(groups, test_group):
     """Generate an index to identify which group is in test_group."""
-    a = list(set(test_group))
+    uniq_groups = list(set(test_group))
     index = []
-    for e in a:
-        index.append(np.where(groups == e)[0][0])
+    for group in uniq_groups:
+        index.append(np.where(groups == group)[0][0])
     return index
 
 
@@ -198,8 +198,7 @@ def is_strat(y, groups=None, test_group=None):
     labels = np.asarray(labels)
     if len(np.where(labels == 1)[0]) == check / 2:
         return True
-    else:
-        return False
+    return False
 
 
 def computePSD(signal, window, overlap, fmin, fmax, fs):
@@ -256,7 +255,7 @@ def elapsed_time(t0, t1, formating=True):
             formated_time = "{:.0f}h:{:.0f}m:{:.0f}s".format(nbh, nbm, nbs)
         elif lapsed > m:
             formated_time = "{:.0f}m:{:.0f}s".format(nbm, nbs)
-        else
+        else:
             formated_time = "{:.4f}s".format(nbs)
         return formated_time
     return lapsed
@@ -333,7 +332,7 @@ def convert_sleep_data(data_path, sub_i, elec=None):
             dataset = np.asarray(h5py.File(tempFileName, "r")["m_data"])[:, :19]
         else:
             dataset = np.asarray(h5py.File(tempFileName, "r")["m_data"])[:, elec]
-    except (IOError):
+    except IOError:
         print(tempFileName, "not found")
     cycles = split_cycles(dataset, sub_i)
     dataset = []
@@ -344,7 +343,10 @@ def convert_sleep_data(data_path, sub_i, elec=None):
                 save = np.concatenate(
                     [secs[i : i + 30] for i in range(0, len(secs), 30)]
                 )
-                savemat(data_path / "{}_s{}_cycle{}".format(stage, sub_i, i+1), {stage: save})
+                savemat(
+                    data_path / "{}_s{}_cycle{}".format(stage, sub_i, i + 1),
+                    {stage: save},
+                )
 
 
 def merge_S3_S4(data_path, sub_i, cycle):
