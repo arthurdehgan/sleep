@@ -25,7 +25,7 @@ def timer(func):
         start_time = time.perf_counter()
         val = func(*args, **kwargs)
         time_diff = elapsed_time(start_time, time.perf_counter())
-        print(f'"{func.__name__}" executed in {time_diff}')
+        print('"{}" executed in {}'.format(func.__name__, time_diff))
         return val
 
     return wrapper
@@ -126,7 +126,9 @@ def classification(estimator, cv, X, y, groups=None, perm=None, n_jobs=1):
     y = np.asarray(y)
     X = np.asarray(X)
     if len(X) != len(y):
-        raise ValueError(f"Dimension mismatch for X and y : {len(X)}, {len(y)}")
+        raise ValueError(
+            "Dimension mismatch for X and y : {}, {}".format(len(X), len(y))
+        )
     if groups is not None:
         try:
             if len(y) != len(groups):
@@ -247,13 +249,15 @@ def elapsed_time(t0, t1, formating=True):
         nbm = (lapsed - j * nbj - h * nbh) // m
         nbs = lapsed - j * nbj - h * nbh - m * nbm
         if lapsed > j:
-            formated_time = f"{nbj:.0f}j, {nbh:.0f}h:{nbm:.0f}m:{nbs:.0f}s"
+            formated_time = "{:.0f}j, {:.0f}h:{:.0f}m:{:.0f}s".format(
+                nbj, nbh, nbm, nbs
+            )
         elif lapsed > h:
-            formated_time = f"{nbh:.0f}h:{nbm:.0f}m:{nbs:.0f}s"
+            formated_time = "{:.0f}h:{:.0f}m:{:.0f}s".format(nbh, nbm, nbs)
         elif lapsed > m:
-            formated_time = f"{nbm:.0f}m:{nbs:.0f}s"
-        else:
-            formated_time = f"{nbs:.4f}s"
+            formated_time = "{:.0f}m:{:.0f}s".format(nbm, nbs)
+        else
+            formated_time = "{:.4f}s".format(nbs)
         return formated_time
     return lapsed
 
@@ -284,7 +288,7 @@ def load_hypno(sub):
     HYPNO_PATH = path(
         "/home/arthur/Documents/data/sleep_data/sleep_raw_data/hypnograms"
     )
-    with open(HYPNO_PATH / f"hyp_per_s{sub}.txt") as f:
+    with open(HYPNO_PATH / "hyp_per_s{}.txt".format(sub)) as f:
         hypno = []
         for line in f:
             if line[0] not in ["-", "\n"]:
@@ -340,17 +344,17 @@ def convert_sleep_data(data_path, sub_i, elec=None):
                 save = np.concatenate(
                     [secs[i : i + 30] for i in range(0, len(secs), 30)]
                 )
-                savemat(data_path / f"{stage}_s{sub_i}_cycle{i+1}", {stage: save})
+                savemat(data_path / "{}_s{}_cycle{}".format(stage, sub_i, i+1), {stage: save})
 
 
 def merge_S3_S4(data_path, sub_i, cycle):
     try:
-        S3_file = data_path / f"S3_s{sub_i}_cycle{cycle}.mat"
+        S3_file = data_path / "S3_s{}_cycle{}.mat".format(sub_i, cycle)
         S3 = loadmat(S3_file)["S3"]
-        S4_file = data_path / f"S4_s{sub_i}_cycle{cycle}.mat"
+        S4_file = data_path / "S4_s{}_cycle{}.mat".format(sub_i, cycle)
         S4 = loadmat(S4_file)["S4"]
         data = {"SWS": np.concatenate((S3, S4), axis=0)}
-        savemat(data_path / f"SWS_s{sub_i}_cycle{cycle}.mat", data)
+        savemat(data_path / "SWS_s{}_cycle{}.mat".format(sub_i, cycle), data)
         S3_file.remove()
         S4_file.remove()
     except IOError:
@@ -367,9 +371,9 @@ def merge_SWS(data_path, sub_i, cycle=None):
 
 def load_full_sleep(data_path, sub_i, state, cycle=None):
     """Load the samples of a subject for a sleepstate."""
-    tempFileName = data_path / f"{state}_s{sub_i}.mat"
+    tempFileName = data_path / "{}_s{}.mat".format(state, sub_i)
     if cycle is not None:
-        tempFileName = data_path / f"{state}_s{sub_i}_cycle{cycle}.mat"
+        tempFileName = data_path / "{}_s{}_cycle{}.mat".format(state, sub_i, cycle)
     try:
         dataset = loadmat(tempFileName)[state]
     except (IOError, TypeError) as e:
