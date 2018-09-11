@@ -13,17 +13,10 @@ from scipy.io import savemat, loadmat
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from mlxtend.feature_selection import ExhaustiveFeatureSelector as EFS
 from utils import StratifiedLeave2GroupsOut, elapsed_time, compute_pval, create_groups
-from params import (
-    SAVE_PATH,
-    path,
-    CHANNEL_NAMES,
-    WINDOW,
-    OVERLAP,
-    STATE_LIST,
-    FREQ_DICT,
-)
+from params import SAVE_PATH, CHANNEL_NAMES, WINDOW, OVERLAP, STATE_LIST, FREQ_DICT
 
 N_PERM = 1000
+PERM = False
 SAVE_PATH = SAVE_PATH / "psd"
 if "Gamma1" in FREQ_DICT:
     del FREQ_DICT["Gamma1"]
@@ -48,27 +41,20 @@ def main(state, elec):
         / "results"
         / "EFS_NoGamma_{}_{}_{}_{:.2f}.mat".format(state, elec, WINDOW, OVERLAP)
     )
-    if not path(results_file_path).isfile():
-        # print('\nloading PSD for {} frequencies'.format(key))
-        for key in FREQ_DICT:
+    if not results_file_path.isfile():
+        for freq in FREQS:
             data_file_path = SAVE_PATH / "PSD_{}_{}_{}_{}_{:.2f}.mat".format(
-                state, key, elec, WINDOW, OVERLAP
+                state, freq, elec, WINDOW, OVERLAP
             )
 
-            if path(data_file_path).isfile():
-                data = loadmat(data_file_path)["data"].ravel()
-                if final_data is None:
-                    final_data = data
-                else:
-                    for i, submat in enumerate(final_data):
-                        final_data[i] = np.concatenate((submat, data[i]), axis=0)
+            data = loadmat(data_file_path)["data"].ravel()
+            if final_data is None:
+                final_data = data
             else:
-                print(path(data_file_path).name + " Not found")
-                print(
-                    'please run "computePSD.py" and\
-                      "group_PSD_per_subjects.py" before\
-                      running this script'
-                )
+                for i, submat in enumerate(final_data):
+                    final_data[i] = np.concatenate((submat, data[i]), axis=0)
+
+        final_data = np.array(list(map(np.transpose, final_data)))
 
         lil_labels = [0] * 18 + [1] * 18
         lil_labels = np.asarray(lil_labels)
@@ -82,57 +68,50 @@ def main(state, elec):
             final_data, lil_labels, lil_groups
         ):
 
-            x_feature, x_classif = data[train_subjects], data[test_subjects]
-            y_feature = lil_labels[train_subjects]
-            y_classif = lil_labels[test_subjects]
+            x_train, x_test = final_data[train_subjects], final_data[test_subjects]
+            y_train, y_test = lil_labels[train_subjects], lil_labels[test_subjects]
 
-            y_feature = [
-                np.array([label] * x_feature[i].shape[1])
-                for i, label in enumerate(y_feature)
-            ]
-            y_feature, groups = create_groups(y_feature)
-            x_feature = np.concatenate(x_feature[:], axis=1).T
+            y_train = [[label] * len(x_train[i]) for i, label in enumerate(y_train)]
+            y_train, groups = create_groups(y_train)
+            x_train = np.concatenate(x_train[:], axis=0)
 
             nested_sl2go = StratifiedLeave2GroupsOut()
             clf = LDA()
             f_select = EFS(
                 estimator=clf,
-                max_features=x_feature.shape[-1],
+                max_features=x_train.shape[-1],
                 cv=nested_sl2go,
-                verbose=0,
                 n_jobs=-1,
             )
 
-            f_select = f_select.fit(x_feature, y_feature, groups)
+            f_select = f_select.fit(x_train, y_train, groups)
 
             best_idx = f_select.best_idx_
-            best_freqs.append(FREQS[list(best_idx)])
+            best_freqs.append(list(FREQS[list(best_idx)]))
             best_scores.append(f_select.best_score_)
 
             test_clf = LDA()
-            test_clf.fit(x_feature[:, best_idx], y_feature)
-            y_classif = [
-                np.array([label] * x_classif[i].shape[1])
-                for i, label in enumerate(y_classif)
-            ]
-            y_classif, groups = create_groups(y_classif)
-            x_classif = np.concatenate(x_classif[:], axis=1).T
-            test_score = test_clf.score(x_classif[:, best_idx], y_classif)
+            test_clf.fit(x_train[:, best_idx], y_train)
+            y_test = [[label] * len(x_test[i]) for i, label in enumerate(y_test)]
+            y_test, groups = create_groups(y_test)
+            x_test = np.concatenate(x_test[:], axis=0)
+            test_score = test_clf.score(x_test[:, best_idx], y_test)
             test_scores.append(test_score)
 
-            pscores_cv = []
-            for _ in range(N_PERM):
-                y_feature = np.random.permutation(y_feature)
-                y_classif = np.random.permutation(y_classif)
+            if PERM:
+                pscores_cv = []
+                for _ in range(N_PERM):
+                    y_train = np.random.permutation(y_train)
+                    y_test = np.random.permutation(y_test)
 
-                clf = LDA()
-                clf.fit(x_feature[:, best_idx], y_feature)
-                pscore = clf.score(x_classif[:, best_idx], y_classif)
-                pscores_cv.append(pscore)
+                    clf = LDA()
+                    clf.fit(x_train[:, best_idx], y_train)
+                    pscore = clf.score(x_test[:, best_idx], y_test)
+                    pscores_cv.append(pscore)
 
-            pvalue = compute_pval(test_score, pscores_cv)
-            pvalues.append(pvalue)
-            pscores.append(pscores_cv)
+                pvalue = compute_pval(test_score, pscores_cv)
+                pvalues.append(pvalue)
+                pscores.append(pscores_cv)
 
         score = np.mean(test_scores)
         data = {

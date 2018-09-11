@@ -213,7 +213,7 @@ def computePSD(signal, window, overlap, fmin, fmax, fs):
 def create_groups(y):
     """Generate groups from labels of shape (subject x labels)."""
     k = 0
-    y = np.asarray(y)
+    y = np.asarray(list(map(np.asarray, y)))
     groups = []
     for sub in y:
         for _ in range(len(sub.ravel())):
