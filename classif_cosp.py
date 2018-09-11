@@ -19,7 +19,7 @@ from utils import (
 )
 from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW, OVERLAP, LABEL_PATH
 
-PREFIX = 'perm_'
+PREFIX = "perm_"
 # PREFIX = 'classif_'
 # PREFIX = "reduced_classif_"
 # PREFIX = "bootstrapped_classif_"
@@ -123,7 +123,7 @@ def main(state, freq):
                 % (state, freq, save["acc_score"], np.std(save["acc"]))
             )
             if PERM:
-                print('pval = {}'.format(save['acc_pvalue']
+                print("pval = {}".format(save["acc_pvalue"]))
 
         else:
             print(data_file_path.name + " Not found")
