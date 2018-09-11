@@ -39,7 +39,7 @@ pref_list = prefix.split("_")
 BOOTSTRAP = "bootstrapped" in pref_list
 SUBSAMPLE = "subsamp" in pref_list
 PERM = "perm" in pref_list
-N_PERM = 999 if PERM else None
+N_PERM = 99 if PERM else None
 N_BOOTSTRAPS = 100 if BOOTSTRAP else 1
 
 SAVE_PATH = SAVE_PATH / "psd"
