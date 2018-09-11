@@ -19,9 +19,9 @@ from utils import (
 )
 from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW, OVERLAP, LABEL_PATH
 
-# PREFIX = 'perm_'
+PREFIX = 'perm_'
 # PREFIX = 'classif_'
-PREFIX = "reduced_classif_"
+# PREFIX = "reduced_classif_"
 # PREFIX = "bootstrapped_classif_"
 # NAME = "subsamp_cosp"
 NAME = "cosp"
@@ -40,7 +40,7 @@ REDUCED = "reduced" in PREFIX_LIST
 FULL_TRIAL = "ft" in PREFIX_LIST or "moy" in PREFIX_LIST
 SUBSAMPLE = "subsamp" in NAME.split("_")
 PERM = "perm" in PREFIX_LIST
-N_PERM = 990 if PERM else None
+N_PERM = 99 if PERM else None
 if BOOTSTRAP:
     N_BOOTSTRAPS = 100
 elif REDUCED:
@@ -122,6 +122,8 @@ def main(state, freq):
                 "accuracy for %s %s : %0.2f (+/- %0.2f)"
                 % (state, freq, save["acc_score"], np.std(save["acc"]))
             )
+            if PERM:
+                print('pval = {}'.format(save['acc_pvalue']
 
         else:
             print(data_file_path.name + " Not found")
