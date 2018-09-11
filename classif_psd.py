@@ -30,9 +30,9 @@ from params import (
     FREQ_DICT,
 )
 
-prefix = "perm"
+# prefix = "perm"
 # prefix = 'classif'
-# prefix = "bootstrapped_perm_subsamp_"
+prefix = "bootstrapped_perm_subsamp_"
 SOLVER = "svd"  # 'svd' 'lsqr'
 
 pref_list = prefix.split("_")
