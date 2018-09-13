@@ -9,6 +9,7 @@ from scipy.io import savemat, loadmat
 import pandas as pd
 import numpy as np
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+from sklearn.model_selection import StratifiedShuffleSplit as SSS
 from pyriemann.classification import TSclassifier
 from utils import (
     create_groups,
@@ -24,9 +25,9 @@ PREFIX = "perm_"
 # PREFIX = "reduced_classif_"
 # PREFIX = "bootstrapped_classif_"
 # NAME = "subsamp_cosp"
-NAME = "cosp"
+# NAME = "cosp"
 # NAME = 'ft_cosp'
-# NAME = 'moy_cosp'
+NAME = "moy_cosp"
 # NAME = 'im_cosp'
 # NAME = 'wpli'
 # NAME = 'coh'
@@ -37,10 +38,10 @@ NAME = "cosp"
 PREFIX_LIST = PREFIX.split("_")
 BOOTSTRAP = "bootstrapped" in PREFIX_LIST
 REDUCED = "reduced" in PREFIX_LIST
-FULL_TRIAL = "ft" in PREFIX_LIST or "moy" in PREFIX_LIST
+FULL_TRIAL = "ft" in NAME or "moy" in NAME
 SUBSAMPLE = "subsamp" in NAME.split("_")
 PERM = "perm" in PREFIX_LIST
-N_PERM = 99 if PERM else None
+N_PERM = 999 if PERM else None
 if BOOTSTRAP:
     N_BOOTSTRAPS = 100
 elif REDUCED:
@@ -97,20 +98,22 @@ def main(state, freq):
                         reduced_data.append(temp_b)
                     data = np.asarray(reduced_data)
 
-                sl2go = StratifiedLeave2GroupsOut()
+                if FULL_TRIAL:
+                    crossval = SSS(9)
+                else:
+                    crossval = StratifiedLeave2GroupsOut()
                 lda = LDA()
                 clf = TSclassifier(clf=lda)
                 save = classification(
-                    clf, sl2go, data, labels, groups, N_PERM, n_jobs=-1
+                    clf, crossval, data, labels, groups, N_PERM, n_jobs=-1
                 )
 
                 print(save["acc_score"])
-                if BOOTSTRAP or REDUCED:
-                    if i == 0:
-                        final_save = save
-                    else:
-                        for key, value in save.items():
-                            final_save[key] += value
+                if i == 0:
+                    final_save = save
+                elif BOOTSTRAP or REDUCED:
+                    for key, value in save.items():
+                        final_save[key] += value
 
             final_save["n_rep"] = N_BOOTSTRAPS
             if BOOTSTRAP:
@@ -120,7 +123,7 @@ def main(state, freq):
 
             print(
                 "accuracy for %s %s : %0.2f (+/- %0.2f)"
-                % (state, freq, save["acc_score"], np.std(save["acc"]))
+                % (state, freq, np.mean(save["acc_score"]), np.std(save["acc"]))
             )
             if PERM:
                 print("pval = {}".format(save["acc_pvalue"]))
