@@ -17,6 +17,16 @@ from path import Path as path
 from joblib import Parallel, delayed
 
 
+def super_count(liste):
+    counts = dict()
+    for item in liste:
+        if item in counts:
+            counts[item] += 1
+        else:
+            counts[item] = 1
+    return counts
+
+
 def timer(func):
     """Decorator to compute time spend for the wrapped function"""
 
@@ -213,6 +223,7 @@ def computePSD(signal, window, overlap, fmin, fmax, fs):
 def create_groups(y):
     """Generate groups from labels of shape (subject x labels)."""
     k = 0
+    y = np.asarray(list(map(np.ravel, y)))
     y = np.asarray(list(map(np.asarray, y)))
     groups = []
     for sub in y:
