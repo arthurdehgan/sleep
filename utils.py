@@ -8,6 +8,7 @@ from sklearn.base import clone
 from sklearn.utils import indexable
 from sklearn.utils.validation import check_array, _num_samples
 from sklearn.metrics import accuracy_score, roc_auc_score
+from sklearn.utils.fixes import signature, comb
 from scipy.io import loadmat, savemat
 from scipy.signal import welch
 import h5py
