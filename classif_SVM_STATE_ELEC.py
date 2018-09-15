@@ -13,7 +13,7 @@ from utils import StratifiedLeave2GroupsOut, create_groups, prepare_data
 from params import SAVE_PATH, LABEL_PATH, WINDOW, OVERLAP, FREQ_DICT
 
 SAVE_PATH = SAVE_PATH / "psd"
-PREFIX = "classif"
+PREFIX = "classif_svm_"
 N_PERM = None
 STATE, ELEC = sys.argv[1], sys.argv[2]
 
