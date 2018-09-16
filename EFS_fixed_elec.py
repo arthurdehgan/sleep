@@ -5,6 +5,7 @@ Computes pvalues and saves them in a mat format with the decoding accuracies.
 Author: Arthur Dehgan
 """
 from time import time
+import sys
 from itertools import product
 import numpy as np
 from scipy.io import savemat, loadmat
@@ -22,7 +23,7 @@ if "Gamma1" in FREQ_DICT:
     del FREQ_DICT["Gamma1"]
 FREQS = np.array(list(FREQ_DICT.keys()))
 print(FREQS)
-STATE = "SWS"
+STATE = sys.argv[1]
 
 
 def main(elec):
@@ -78,12 +79,7 @@ def main(elec):
 
             nested_sl2go = StratifiedLeave2GroupsOut()
             clf = LDA()
-            f_select = EFS(
-                estimator=clf,
-                max_features=x_train.shape[-1],
-                cv=nested_sl2go,
-                n_jobs=-1,
-            )
+            f_select = EFS(estimator=clf, max_features=5, cv=nested_sl2go, n_jobs=-1)
 
             f_select = f_select.fit(x_train, y_train, groups)
 
