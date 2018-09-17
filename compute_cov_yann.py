@@ -21,6 +21,7 @@ def load_samples(data_path, sub, cond):
     file_name = "subject{}_tseries_post.mat".format(sub)
     data_m = loadmat(DATA_PATH / file_name)[cond]
     data = data_m.swapaxes(0, 2)
+    data = data_m.swapaxes(1, 2)
     return data
 
 
