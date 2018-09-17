@@ -15,7 +15,7 @@ from params import SAVE_PATH, LABEL_PATH, WINDOW, OVERLAP, FREQ_DICT
 SAVE_PATH = SAVE_PATH / "psd"
 PREFIX = "classif_svm_"
 N_PERM = None
-STATE, ELEC = sys.argv[1], sys.argv[2]
+STATE, ELEC = sys.argv[1], sys.argv[2][:-1]
 
 LABELS = loadmat(LABEL_PATH / STATE + "_labels.mat")["y"].ravel()
 LABELS, GROUPS = create_groups(LABELS)
