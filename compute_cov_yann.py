@@ -4,6 +4,7 @@ Author: Arthur Dehgan"""
 import os
 import numpy as np
 from path import Path as path
+from joblib import Parallel, delayed
 
 # from pyriemann.estimationmod import CospCovariances
 from pyriemann.estimation import Covariances
@@ -15,7 +16,7 @@ COND_LIST = []
 
 
 def load_samples(data_path, sub, cond):
-    file_name = "subject{}_tseries.mat".format(sub)
+    file_name = "subject{}_tseries_post.mat".format(sub)
     data_m = loadmat(DATA_PATH / file_name)[cond]
     data = data_m.swapaxes(0, 2)
     return data
