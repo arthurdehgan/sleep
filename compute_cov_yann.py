@@ -12,7 +12,9 @@ from scipy.io import savemat, loadmat
 
 SAVE_PATH = path("SAVEPATH")
 DATA_PATH = path("DATA_PATH")
+SUBJECT_LIST = []
 COND_LIST = []
+prefix = "covariance"
 
 
 def load_samples(data_path, sub, cond):
@@ -27,9 +29,9 @@ def combine_subjects(cond):
     dat, load_list = [], []
     print(cond)
     for sub in SUBJECT_LIST:
-        pattern = prefix + "_s{}_{}.mat"
-        pattern = prefix + "_{}.mat"
-        file_path = path(SAVE_PATH / pattern.format(sub, cond))
+        pattern = prefix + "_s{}_{}.mat".format(sub, cond)
+        save_pattern = prefix + "_{}.mat".format(cond)
+        file_path = path(SAVE_PATH / pattern)
         try:
             data = loadmat(file_path)["data"]
             dat.append(data)
@@ -44,15 +46,12 @@ def combine_subjects(cond):
 def compute_cov(cond):
     """Computes the crosspectrum matrices per subjects."""
     for sub in SUBJECT_LIST:
-        pattern = prefix + "_s{}_{}.mat"
-        file_path = path(SAVE_PATH / pattern.format(sub, cond))
+        pattern = prefix + "_s{}_{}.mat".format(sub, cond)
+        file_path = path(SAVE_PATH / pattern)
 
         if not file_path.isfile():
             # data must be of shape n_trials x n_elec x n_samples
             data = load_samples(DATA_PATH, sub, cond)
-            if FULL_TRIAL:
-                data = np.concatenate(data, axis=1)
-                data = data.reshape(1, data.shape[0], data.shape[1])
             cov = Covariances()
             mat = cov.fit_transform(data)
             savemat(file_path, {"data": mat})
