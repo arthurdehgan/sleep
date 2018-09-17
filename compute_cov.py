@@ -2,64 +2,64 @@
 
 Author: Arthur Dehgan"""
 import os
-from time import time
+import numpy as np
 from path import Path as path
 from joblib import Parallel, delayed
-import numpy as np
 
 # from pyriemann.estimationmod import CospCovariances
 from pyriemann.estimation import Covariances
 from scipy.io import savemat, loadmat
-from utils import elapsed_time, load_samples
-from params import DATA_PATH, SAVE_PATH, SUBJECT_LIST, STATE_LIST
 
-SAVE_PATH = SAVE_PATH / "covariance/"
-FULL_TRIAL = True
-if FULL_TRIAL:
-    prefix = "ft_cov"
-else:
-    prefix = "cov"
+SAVE_PATH = path("SAVEPATH")
+DATA_PATH = path("DATA_PATH")
+SUBJECT_LIST = []
+COND_LIST = []
+prefix = "covariance"
 
 
-def combine_subjects(state):
+def load_samples(data_path, sub, cond):
+    file_name = "subject{}_tseries_post.mat".format(sub)
+    data_m = loadmat(DATA_PATH / file_name)[cond]
+    data = data_m.swapaxes(0, 2)
+    data = data_m.swapaxes(1, 2)
+    return data
+
+
+def combine_subjects(cond):
     """Combines crosspectrum matrices from subjects into one."""
     dat, load_list = [], []
-    print(state)
+    print(cond)
     for sub in SUBJECT_LIST:
-        pattern = prefix + "_s{}_{}.mat"
-        pattern = prefix + "_{}.mat"
-        file_path = path(SAVE_PATH / pattern.format(sub, state))
+        pattern = prefix + "_s{}_{}.mat".format(sub, cond)
+        save_pattern = prefix + "_{}.mat".format(cond)
+        file_path = path(SAVE_PATH / pattern)
         try:
             data = loadmat(file_path)["data"]
             dat.append(data)
             load_list.append(str(file_path))
         except IOError:
             print(file_path, "not found")
-    savemat(SAVE_PATH / save_pattern.format(state), {"data": np.asarray(dat)})
+    savemat(SAVE_PATH / save_pattern.format(cond), {"data": np.asarray(dat)})
     for file in load_list:
         os.remove(file)
 
 
-def compute_cov(state):
+def compute_cov(cond):
     """Computes the crosspectrum matrices per subjects."""
     for sub in SUBJECT_LIST:
-        pattern = prefix + "_s{}_{}.mat"
-        file_path = path(SAVE_PATH / pattern.format(sub, state))
+        pattern = prefix + "_s{}_{}.mat".format(sub, cond)
+        file_path = path(SAVE_PATH / pattern)
 
         if not file_path.isfile():
             # data must be of shape n_trials x n_elec x n_samples
-            data = load_samples(DATA_PATH, sub, state)
-            if FULL_TRIAL:
-                data = np.concatenate(data, axis=1)
-                data = data.reshape(1, data.shape[0], data.shape[1])
+            data = load_samples(DATA_PATH, sub, cond)
             cov = Covariances()
             mat = cov.fit_transform(data)
             savemat(file_path, {"data": mat})
 
 
 if __name__ == "__main__":
-    T_START = time()
-    Parallel(n_jobs=-1)(delayed(compute_cov)(state) for state in STATE_LIST)
+    print("computing cov matrices")
+    Parallel(n_jobs=-1)(delayed(compute_cov)(cond) for cond in COND_LIST)
     print("combining subjects data")
-    Parallel(n_jobs=-1)(delayed(combine_subjects)(state) for state in STATE_LIST)
-    print("total time lapsed : %s" % elapsed_time(T_START, time()))
+    Parallel(n_jobs=-1)(delayed(combine_subjects)(cond) for cond in COND_LIST)
