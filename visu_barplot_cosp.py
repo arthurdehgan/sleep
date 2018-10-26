@@ -15,14 +15,26 @@ from scipy.stats import binom
 # Path where the figure will be saved
 FIG_PATH = SAVE_PATH.dirname() / "figures"
 # Path where the results are loaded from
-# prefix = 'classif_'
-prefix = "bootstrapped_classif_subsamp_"
-SUBSAMP = "subsamp" in prefix
-COSP_PATH = SAVE_PATH / prefix + "cosp/results"
-COV_PATH = SAVE_PATH / "cov/results/"
+# PREFIX = "classif_"
+# PREFIX = "perm_"
+# NAME_COSP = "moy_cosp"
+# NAME_COSP = "cosp"
+NAME_COSP = "subsamp_cosp"
+# NAME_COV = "moy_cov"
+# NAME_COV = "cov"
+NAME_COV = "subsamp_cov"
+PREFIX = "bootstrapped_classif_"
+MOY = "moy" in NAME_COSP
+SUBSAMP = "subsamp" in PREFIX
+COSP_PATH = SAVE_PATH / NAME_COSP / "results/backup_2610_guillimin"
+COV_PATH = SAVE_PATH / NAME_COV / "results"
+PERM = "perm" in PREFIX.split("_")
+PVAL = 0.01
+if "Gamma1" in FREQ_DICT:
+    del FREQ_DICT["Gamma1"]
 
 MINMAX = [40, 80]
-Y_LABEL = "Decoding accuracies"
+Y_LABEL = "Decoding accuracies (%)"
 COLORS = ["#C2C2C2"] + list(sns.color_palette("deep"))
 
 # COLORS = ['#DC9656', '#D8D8D8', '#86C1B9', '#BA8BAF',
@@ -31,7 +43,7 @@ WIDTH = .90
 GRAPH_TITLE = ""
 # GRAPH_TITLE = "Riemannian classifications"
 
-RESOLUTION = 600
+RESOLUTION = 300
 
 
 def autolabel(ax, rects, thresh):
@@ -58,22 +70,29 @@ def autolabel(ax, rects, thresh):
 
 
 # barplot parameters
-def visualisation(pval, scoring, print_sem, all_states, gamma):
+def visualisation(pval, scoring, print_sem):
     sem_suffix = ""
-    states_suffix = "_AllStates"
-    gamma_suffix = ""
+    # states_suffix = "_AllStates"
+    # gamma_suffix = ""
     labels = list(FREQ_DICT.keys())
     labels = ["Covariance"] + labels
-    if not gamma:
-        labels.remove("Gamma1")
-        gamma_suffix = "_NoGamma"
-    if not all_states:
-        groups = STATE_LIST[2:]
-        states_suffix = ""
-    else:
-        groups = STATE_LIST
+    # if not gamma1:
+    #     labels.remove("Gamma1")
+    #     gamma_suffix = "_NoGamma2"
+    # if not gamma2:
+    #     labels.remove("Gamma2")
+    #     gamma_suffix = "_NoGamma"
+    # if not all_states:
+    #     groups = STATE_LIST[2:]
+    #     states_suffix = ""
+    # else:
+    # groups = STATE_LIST
+    groups = STATE_LIST
     if not print_sem:
         sem_suffix = "_NoSTD"
+    # if not gamma:
+    #     labels.remove("Gamma1")
+    #     gamma_suffix = "_NoGamma"
 
     if SUBSAMP:
         metric = scoring
@@ -81,37 +100,61 @@ def visualisation(pval, scoring, print_sem, all_states, gamma):
         metric = "data" if scoring == "acc" else "auc"
 
     nb_labels = len(labels)
-    dat = []
-    sems = []
+    dat, sems = [], []
+    thresholds = []
     for state in groups:
-        temp = []
-        temp_sem = []
+        temp_sem, temp, temp_thresh = [], [], []
         for lab in labels:
             if lab == "Covariance":
-                file_name = COV_PATH / prefix + "cov_{}.mat".format(state)
+                file_name = COV_PATH / PREFIX + f"{NAME_COV}_{state}.mat"
             else:
-                # file_name = COSP_PATH / prefix +\
-                file_name = COSP_PATH / prefix + "cosp_{}_{}_{}_{:.2f}.mat".format(
-                    state, lab, WINDOW, OVERLAP
+                file_name = (
+                    COSP_PATH / PREFIX
+                    + f"{NAME_COSP}_{state}_{lab}_{WINDOW}_{OVERLAP:.2f}.mat"
                 )
+
             try:
+                print(file_name)
                 data = loadmat(file_name)
-                data = data[metric][0]
+                if PERM:
+                    pscores = data["acc_pscores"][0]
+                    ind = int(PVAL * len(pscores))
+                    threshold = sorted(pscores)[-ind]
+                if metric in list(data.keys()):
+                    data = data[metric][0]
+                else:
+                    data = data["acc_score"][0]
+                if data[0] < 1:
+                    data *= 100
             except IOError:
                 print(file_name, "not found.")
-            temp.append(100 * np.mean(data))
-            temp_sem.append(100 * sem(data))
+            except KeyError:
+                print(file_name, metric, "key error")
+            temp.append(np.mean(data))
+            temp_sem.append(sem(data))
+            if PERM:
+                if threshold < 1:
+                    threshold *= 100
+                temp_thresh.append(threshold)
         dat.append(temp)
         sems.append(temp_sem)
+        if PERM:
+            thresholds.append(temp_thresh)
 
-    info_data = pd.read_csv("info_data.csv")
+    info_data = pd.read_csv(SAVE_PATH / "info_data.csv")
     if SUBSAMP:
         # n_trials = 36 * int(input('Number of trials per subject ? '))
         n_trials = 36 * 153
         trials = [n_trials] * len(groups)
+    elif MOY:
+        n_trials = 36
+        trials = [n_trials] * len(groups)
     else:
         trials = list(info_data.iloc[36])[1:-2]
-    thresholds = [100 * binom.isf(pval, n_trials, .5) / n_trials for n_trials in trials]
+    if not PERM:
+        thresholds = [
+            100 * binom.isf(pval, n_trials, .5) / n_trials for n_trials in trials
+        ]
     fig = plt.figure(figsize=(10, 5))  # size of the figure
 
     # Generating the barplot (do not change)
@@ -120,10 +163,13 @@ def visualisation(pval, scoring, print_sem, all_states, gamma):
     offset = .4
     for group in range(len(groups)):
         bars = []
-        t = thresholds[group]
+        if not PERM:
+            t = thresholds[group]
         data = dat[group]
         sem_val = sems[group]
         for i, val in enumerate(data):
+            if PERM:
+                t = thresholds[group][i]
             pos = i + 1
             if i == 1:
                 temp += offset  # offset for the first bar
@@ -141,7 +187,7 @@ def visualisation(pval, scoring, print_sem, all_states, gamma):
             )
             end = start + WIDTH
             ax.plot([start, end], [t, t], "k--")
-            ax = autolabel(ax, bars[i], t)
+            # ax = autolabel(ax, bars[i], t)
         temp += pos + 1
 
     ax.set_ylabel(Y_LABEL)
@@ -155,15 +201,21 @@ def visualisation(pval, scoring, print_sem, all_states, gamma):
         ]
     )
     # labels[-1] = labels[-1][:-1]
-    ax.legend(bars, labels)
-    # ax.legend(bars, labels, loc='upper center', bbox_to_anchor=(0.5, -0.05),
-    # fancybox=True, shadow=True, ncol=len(labels))
-
-    FILE_NAME = prefix + "riemann_{}_{}_1000_0{}{}{}.png".format(
-        scoring, pval, sem_suffix, states_suffix, gamma_suffix
+    labels = ["Covariance"] + [elem + " cospec" for elem in FREQ_DICT]
+    # ax.legend(bars, labels, frameon=False)
+    ax.legend(
+        bars,
+        labels,
+        loc="upper center",
+        bbox_to_anchor=(0.5, -0.05),
+        fancybox=True,
+        shadow=True,
+        ncol=len(labels),
     )
-    print(FIG_PATH / FILE_NAME)
-    save_path = str(FIG_PATH / FILE_NAME)
+
+    file_name = PREFIX + f"{NAME_COSP}_{scoring}_{pval}_1000_0{sem_suffix}_NoGamma.png"
+    print(FIG_PATH / file_name)
+    save_path = str(FIG_PATH / file_name)
     fig.savefig(save_path, dpi=RESOLUTION)
     plt.close()
 
@@ -180,4 +232,4 @@ if __name__ == "__main__":
                     for states in options:
                         visualisation(pval, scoring, gamma, sem, states)
     """
-    visualisation(0.01, "acc", True, True, False)
+    visualisation(PVAL, "acc", True)

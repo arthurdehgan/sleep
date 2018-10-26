@@ -13,7 +13,7 @@ n_perm = 9999
 
 
 def main(stade, freq):
-    dreamers, ndreamers = [], []
+    HRs, LRs = [], []
     for elec in CHANNEL_NAMES:
 
         file_path = SAVE_PATH / "PSD_{}_{}_{}_{}_{:.2f}.mat".format(
@@ -25,24 +25,22 @@ def main(stade, freq):
             print(file_path, "corrupted")
         except IOError:
             print(file_path, "Not Found")
-        dreamer = X[:18]
-        ndreamer = X[18:]
-        for i in range(len(dreamer)):
-            dreamer[i] = dreamer[i].mean()
-            ndreamer[i] = ndreamer[i].mean()
+        X = np.delete(X, 9, 0)  # delete subj 10 cuz of artefact on FC2
+        HR = X[:17]
+        LR = X[17:]
+        HR = np.concatenate([psd.flatten() for psd in HR])
+        LR = np.concatenate([psd.flatten() for psd in LR])
+        # for i in range(len(HR)):
+        #     HR[i] = HR[i].mean()
+        #     LR[i] = LR[i].mean()
 
-        dreamers.append(dreamer)
-        ndreamers.append(ndreamer)
+        HRs.append(HR)
+        LRs.append(LR)
 
-    dreamers = np.asarray(dreamers, dtype=float).T
-    ndreamers = np.asarray(ndreamers, dtype=float).T
+    HRs = np.asarray(HRs, dtype=float).T
+    LRs = np.asarray(LRs, dtype=float).T
     tval, pvalues = ttest_perm_unpaired(
-        cond1=dreamers,
-        cond2=ndreamers,
-        n_perm=n_perm,
-        equal_var=False,
-        two_tailed=True,
-        n_jobs=-2,
+        cond1=HRs, cond2=LRs, n_perm=n_perm, equal_var=False, two_tailed=True, n_jobs=-2
     )
 
     data = {"p_values": np.asarray(pvalues), "t_values": tval}

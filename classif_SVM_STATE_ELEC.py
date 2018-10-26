@@ -45,14 +45,14 @@ for freq in FREQ_DICT:
             nested_cv = StratifiedLeave2GroupsOut()
             clf = SVC(kernel="rbf")
             parameters = {"C": np.logspace(-3, 2, 6), "gamma": np.logspace(-3, 2, 6)}
-            random_search = RS(clf, parameters, n_iter=10, n_jobs=-1, cv=nested_cv)
-            random_search = random_search.fit(
-                X=train_set, y=train_labs, groups=train_groups
-            )
-            save["score"].append(random_search.score(validation_set, validation_labs))
+            random_search = RS(clf, parameters, n_iter=1, n_jobs=-1, cv=nested_cv)
+            random_search.fit(X=train_set, y=train_labs, groups=train_groups)
+            score = random_search.score(validation_set, validation_labs)
+            save["score"].append(score)
             save["cv_results"].append(random_search.cv_results_)
             save["best_score"].append(random_search.best_score_)
             save["best_params"].append(random_search.best_params_)
+            break
 
         savemat(save_file_path, save)
 
