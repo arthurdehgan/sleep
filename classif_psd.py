@@ -4,12 +4,13 @@ Computes pvalues and saves them in a mat format with the decoding accuracies.
 
 Author: Arthur Dehgan
 """
+import sys
 from time import time
+from itertools import product
 
 # from joblib import Parallel, delayed
 import pandas as pd
 import numpy as np
-from itertools import product
 from scipy.io import savemat, loadmat
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from utils import (
@@ -22,7 +23,6 @@ from utils import (
 from params import (
     SAVE_PATH,
     LABEL_PATH,
-    path,
     CHANNEL_NAMES,
     WINDOW,
     OVERLAP,
@@ -30,22 +30,22 @@ from params import (
     FREQ_DICT,
 )
 
-# prefix = "perm"
-# prefix = 'classif'
-prefix = "bootstrapped_perm_subsamp_"
+# PREFIX = "perm"
+# PREFIX = 'classif'
+PREFIX = "bootstrapped_perm_subsamp_"
 SOLVER = "svd"  # 'svd' 'lsqr'
 
-pref_list = prefix.split("_")
-BOOTSTRAP = "bootstrapped" in pref_list
-SUBSAMPLE = "subsamp" in pref_list
-PERM = "perm" in pref_list
+PREF_LIST = PREFIX.split("_")
+BOOTSTRAP = "bootstrapped" in PREF_LIST
+SUBSAMPLE = "subsamp" in PREF_LIST
+PERM = "perm" in PREF_LIST
 N_PERM = 99 if PERM else None
 N_BOOTSTRAPS = 100 if BOOTSTRAP else 1
 
 SAVE_PATH = SAVE_PATH / "psd"
 
 
-def main(state, elec):
+def classif_psd(state, elec):
     global SUBSAMPLE, SAVE_PATH
     if SUBSAMPLE:
         info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
@@ -65,7 +65,7 @@ def main(state, elec):
             state, freq, elec, WINDOW, OVERLAP
         )
 
-        save_file_name = prefix + data_file_name
+        save_file_name = PREFIX + data_file_name
 
         data_file_path = SAVE_PATH / data_file_name
 
@@ -110,6 +110,13 @@ def main(state, elec):
 
 if __name__ == "__main__":
     TIMELAPSE_START = time()
-    for state, elec in product(STATE_LIST, CHANNEL_NAMES):
-        main(state, elec)
+    ARGS = sys.argv[1:]
+    if ARGS == []:
+        for state, elec in product(STATE_LIST, CHANNEL_NAMES):
+            classif_psd(state, elec)
+    elif len(ARGS) == 1:
+        for state in STATE_LIST:
+            classif_psd(state, ARGS[0])
+    else:
+        classif_psd(ARGS[0], ARGS[1])
     print("total time lapsed : %s" % (elapsed_time(TIMELAPSE_START, time())))
