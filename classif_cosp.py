@@ -135,10 +135,11 @@ def classif_cosp(state, freq):
 
 if __name__ == "__main__":
     TIMELAPSE_START = time()
-    ARGS = sys.argv[1:]
+    ARGS = sys.argv[1:][0].split("_")
     if ARGS == []:
         for freq, state in product(FREQ_DICT, STATE_LIST):
             classif_cosp(state, freq)
     else:
+        print(ARGS)
         classif_cosp(ARGS[0], ARGS[1])
     print("total time lapsed : %s" % elapsed_time(TIMELAPSE_START, time()))

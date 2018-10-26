@@ -135,5 +135,6 @@ if __name__ == "__main__":
         for state in STATE_LIST:
             classif_cov(state)
     else:
+        print(ARGS)
         classif_cov(ARGS[0])
     print("total time lapsed : %s" % elapsed_time(TIMELAPSE_START, time()))

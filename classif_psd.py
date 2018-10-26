@@ -110,13 +110,11 @@ def classif_psd(state, elec):
 
 if __name__ == "__main__":
     TIMELAPSE_START = time()
-    ARGS = sys.argv[1:]
+    ARGS = sys.argv[1:][0].split("_")
     if ARGS == []:
         for state, elec in product(STATE_LIST, CHANNEL_NAMES):
             classif_psd(state, elec)
-    elif len(ARGS) == 1:
-        for state in STATE_LIST:
-            classif_psd(state, ARGS[0])
     else:
+        print(ARGS)
         classif_psd(ARGS[0], ARGS[1])
     print("total time lapsed : %s" % (elapsed_time(TIMELAPSE_START, time())))
