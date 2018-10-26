@@ -21,8 +21,8 @@ from params import SAVE_PATH, STATE_LIST, LABEL_PATH
 # import pdb
 
 # name = 'moy_cov'
-prefix = "classif_subsamp_"
-name = "cov"
+prefix = "bootstrapped_classif_"
+name = "subsamp_cov"
 
 pref_list = prefix.split("_")
 BOOTSTRAP = "bootstrapped" in pref_list
