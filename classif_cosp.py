@@ -3,6 +3,7 @@
 Outputs one file per freq x state
 
 Author: Arthur Dehgan"""
+import sys
 from time import time
 from itertools import product
 from scipy.io import savemat, loadmat
@@ -20,14 +21,14 @@ from utils import (
 )
 from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW, OVERLAP, LABEL_PATH
 
-PREFIX = "perm_"
-# PREFIX = 'classif_'
+# PREFIX = "perm_"
+# PREFIX = "classif_"
 # PREFIX = "reduced_classif_"
-# PREFIX = "bootstrapped_classif_"
-# NAME = "subsamp_cosp"
+PREFIX = "bootstrapped_classif_"
+NAME = "subsamp_cosp"
 # NAME = "cosp"
 # NAME = 'ft_cosp'
-NAME = "moy_cosp"
+# NAME = "moy_cosp"
 # NAME = 'im_cosp'
 # NAME = 'wpli'
 # NAME = 'coh'
@@ -53,7 +54,7 @@ SAVE_PATH = SAVE_PATH / NAME
 print(NAME, PREFIX)
 
 
-def main(state, freq):
+def classif_cosp(state, freq):
     """Where the magic happens"""
     print(state, freq)
     if FULL_TRIAL:
@@ -134,6 +135,10 @@ def main(state, freq):
 
 if __name__ == "__main__":
     TIMELAPSE_START = time()
-    for freq, state in product(FREQ_DICT, STATE_LIST):
-        main(state, freq)
+    ARGS = sys.argv[1:]
+    if ARGS == []:
+        for freq, state in product(FREQ_DICT, STATE_LIST):
+            classif_cosp(state, freq)
+    else:
+        classif_cosp(ARGS[0], ARGS[1])
     print("total time lapsed : %s" % elapsed_time(TIMELAPSE_START, time()))

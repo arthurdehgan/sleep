@@ -1,13 +1,15 @@
 """Load covariance matrix, perform classif, perm test, saves results.
 
-Outputs one file per freq x state
+Outputs one file per state
 
 Author: Arthur Dehgan"""
+import sys
 from time import time
 from scipy.io import savemat, loadmat
 import pandas as pd
 import numpy as np
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
+from sklearn.model_selection import StratifiedShuffleSplit as SSS
 from pyriemann.classification import TSclassifier
 from utils import (
     create_groups,
@@ -18,24 +20,40 @@ from utils import (
 )
 from params import SAVE_PATH, STATE_LIST, LABEL_PATH
 
-# import pdb
-
-# name = 'moy_cov'
-prefix = "bootstrapped_classif_"
-name = "subsamp_cov"
-
-pref_list = prefix.split("_")
-BOOTSTRAP = "bootstrapped" in pref_list
-FULL_TRIAL = "ft" in pref_list or "moy" in pref_list
-SUBSAMPLE = "subsamp" in pref_list
-PERM = "perm" in pref_list
+# PREFIX = "perm_"
+# PREFIX = "classif_"
+# PREFIX = "reduced_classif_"
+PREFIX = "bootstrapped_classif_"
+NAME = "subsamp_cov"
+# NAME = "cosp"
+# NAME = 'ft_cosp'
+# NAME = "moy_cosp"
+# NAME = 'im_cosp'
+# NAME = 'wpli'
+# NAME = 'coh'
+# NAME = 'imcoh'
+# NAME = 'ft_wpli'
+# NAME = 'ft_coh'
+# NAME = 'ft_imcoh'
+PREFIX_LIST = PREFIX.split("_")
+BOOTSTRAP = "bootstrapped" in PREFIX_LIST
+REDUCED = "reduced" in PREFIX_LIST
+FULL_TRIAL = "ft" in NAME or "moy" in NAME.split("_")
+SUBSAMPLE = "subsamp" in NAME.split("_")
+PERM = "perm" in PREFIX_LIST
 N_PERM = 999 if PERM else None
-N_BOOTSTRAPS = 10 if BOOTSTRAP else 1
+if BOOTSTRAP:
+    N_BOOTSTRAPS = 100
+elif REDUCED:
+    N_BOOTSTRAPS = 19
+else:
+    N_BOOTSTRAPS = 1
 
-SAVE_PATH = SAVE_PATH / name
+SAVE_PATH = SAVE_PATH / NAME
+print(NAME, PREFIX)
 
 
-def main(state):
+def classif_cov(state):
     """Where the magic happens"""
     print(state)
     if FULL_TRIAL:
@@ -43,54 +61,68 @@ def main(state):
         groups = range(36)
     elif SUBSAMPLE:
         info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
-        N_TRIALS = info_data.min().min()
-        N_SUBS = len(info_data) - 1
-        groups = [i for i in range(N_SUBS) for _ in range(N_TRIALS)]
-        N_TOTAL = N_TRIALS * N_SUBS
-        labels = [0 if i < N_TOTAL / 2 else 1 for i in range(N_TOTAL)]
+        n_trials = info_data.min().min()
+        n_subs = len(info_data) - 1
+        groups = [i for i in range(n_subs) for _ in range(n_trials)]
+        n_total = n_trials * n_subs
+        labels = [0 if i < n_total / 2 else 1 for i in range(n_total)]
     else:
         labels = loadmat(LABEL_PATH / state + "_labels.mat")["y"].ravel()
         labels, groups = create_groups(labels)
 
-    file_name = prefix + name + "_{}.mat".format(state)
+    file_path = SAVE_PATH / "results" / PREFIX + NAME + "_{}.mat".format(state)
 
-    save_file_path = SAVE_PATH / "results" / file_name
-
-    if not save_file_path.isfile():
-        data_file_path = SAVE_PATH / name + "_{}.mat".format(state)
+    if not file_path.isfile():
+        file_name = NAME + "_{}.mat".format(state)
+        data_file_path = SAVE_PATH / file_name
 
         if data_file_path.isfile():
-            final_save = None
-
+            data_og = loadmat(data_file_path)
             for i in range(N_BOOTSTRAPS):
-                data = loadmat(data_file_path)
                 if FULL_TRIAL:
-                    data = data["data"]
+                    data = data_og["data"]
                 elif SUBSAMPLE:
-                    data = prepare_data(data, n_trials=N_TRIALS, random_state=i)
+                    data = prepare_data(data_og, n_trials=n_trials, random_state=i)
                 else:
-                    data = prepare_data(data)
+                    data = prepare_data(data_og)
 
-                sl2go = StratifiedLeave2GroupsOut()
+                if REDUCED:
+                    reduced_data = []
+                    for submat in data:
+                        temp_a = np.delete(submat, i, 0)
+                        temp_b = np.delete(temp_a, i, 1)
+                        reduced_data.append(temp_b)
+                    data = np.asarray(reduced_data)
+
+                if FULL_TRIAL:
+                    crossval = SSS(9)
+                else:
+                    crossval = StratifiedLeave2GroupsOut()
                 lda = LDA()
                 clf = TSclassifier(clf=lda)
                 save = classification(
-                    clf, sl2go, data, labels, groups, N_PERM, n_jobs=-1
+                    clf, crossval, data, labels, groups, N_PERM, n_jobs=-1
                 )
-                save["acc_bootstrap"] = [save["acc_score"]]
-                save["auc_bootstrap"] = [save["auc_score"]]
-                if final_save is None:
-                    final_save = save
-                else:
-                    for key, value in final_save.items():
-                        final_save[key] = final_save[key] + save[key]
 
-            savemat(save_file_path, final_save)
+                print(save["acc_score"])
+                if i == 0:
+                    final_save = save
+                elif BOOTSTRAP or REDUCED:
+                    for key, value in save.items():
+                        final_save[key] += value
+
+            final_save["n_rep"] = N_BOOTSTRAPS
+            if BOOTSTRAP:
+                final_save["auc_score"] = np.mean(final_save["auc_score"])
+                final_save["acc_score"] = np.mean(final_save["acc_score"])
+            savemat(file_path, final_save)
 
             print(
-                "accuracy for %s : %0.2f (+/- %0.2f)"
-                % (state, save["acc_score"], np.std(save["acc"]))
+                "accuracy for %s %s : %0.2f (+/- %0.2f)"
+                % (state, np.mean(save["acc_score"]), np.std(save["acc"]))
             )
+            if PERM:
+                print("pval = {}".format(save["acc_pvalue"]))
 
         else:
             print(data_file_path.name + " Not found")
@@ -98,6 +130,10 @@ def main(state):
 
 if __name__ == "__main__":
     TIMELAPSE_START = time()
-    for state in STATE_LIST:
-        main(state)
+    ARGS = sys.argv[1:]
+    if ARGS == []:
+        for state in STATE_LIST:
+            classif_cov(state)
+    else:
+        classif_cov(ARGS[0])
     print("total time lapsed : %s" % elapsed_time(TIMELAPSE_START, time()))
