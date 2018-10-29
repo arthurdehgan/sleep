@@ -121,7 +121,7 @@ def classif_cosp(state, freq):
                 for key, value in save.items():
                     final_save[key] += value
 
-            final_save["n_rep"] = i
+            final_save["n_rep"] = i + 1
             savemat(file_path, final_save)
 
         final_save["n_rep"] = N_BOOTSTRAPS

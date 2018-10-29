@@ -71,7 +71,6 @@ def classif_cov(state):
         labels, groups = create_groups(labels)
 
     file_path = SAVE_PATH / "results" / PREFIX + NAME + "_{}.mat".format(state)
-
     if not file_path.isfile():
         n_rep = 0
     else:
@@ -116,7 +115,7 @@ def classif_cov(state):
                 for key, value in save.items():
                     final_save[key] += value
 
-            final_save["n_rep"] = i
+            final_save["n_rep"] = i + 1
             savemat(file_path, final_save)
 
         final_save["n_rep"] = N_BOOTSTRAPS
