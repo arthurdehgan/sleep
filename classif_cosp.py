@@ -78,59 +78,67 @@ def classif_cosp(state, freq):
     )
 
     if not file_path.isfile():
-        file_name = NAME + "_{}_{}_{}_{:.2f}.mat".format(state, freq, WINDOW, OVERLAP)
-        data_file_path = SAVE_PATH / file_name
+        n_rep = 0
+    else:
+        final_save = loadmat(file_path)
+        n_rep = final_save["n_rep"]
 
-        if data_file_path.isfile():
-            data_og = loadmat(data_file_path)
-            for i in range(N_BOOTSTRAPS):
-                if FULL_TRIAL:
-                    data = data_og["data"]
-                elif SUBSAMPLE:
-                    data = prepare_data(data_og, n_trials=n_trials, random_state=i)
-                else:
-                    data = prepare_data(data_og)
+    file_name = NAME + "_{}_{}_{}_{:.2f}.mat".format(state, freq, WINDOW, OVERLAP)
+    data_file_path = SAVE_PATH / file_name
 
-                if REDUCED:
-                    reduced_data = []
-                    for submat in data:
-                        temp_a = np.delete(submat, i, 0)
-                        temp_b = np.delete(temp_a, i, 1)
-                        reduced_data.append(temp_b)
-                    data = np.asarray(reduced_data)
+    if data_file_path.isfile():
+        data_og = loadmat(data_file_path)
+        for i in range(n_rep, N_BOOTSTRAPS):
+            if FULL_TRIAL:
+                data = data_og["data"]
+            elif SUBSAMPLE:
+                data = prepare_data(data_og, n_trials=n_trials, random_state=i)
+            else:
+                data = prepare_data(data_og)
 
-                if FULL_TRIAL:
-                    crossval = SSS(9)
-                else:
-                    crossval = StratifiedLeave2GroupsOut()
-                lda = LDA()
-                clf = TSclassifier(clf=lda)
-                save = classification(
-                    clf, crossval, data, labels, groups, N_PERM, n_jobs=-1
-                )
+            if REDUCED:
+                reduced_data = []
+                for submat in data:
+                    temp_a = np.delete(submat, i, 0)
+                    temp_b = np.delete(temp_a, i, 1)
+                    reduced_data.append(temp_b)
+                data = np.asarray(reduced_data)
 
-                print(save["acc_score"])
-                if i == 0:
-                    final_save = save
-                elif BOOTSTRAP or REDUCED:
-                    for key, value in save.items():
-                        final_save[key] += value
+            if FULL_TRIAL:
+                crossval = SSS(9)
+            else:
+                crossval = StratifiedLeave2GroupsOut()
+            lda = LDA()
+            clf = TSclassifier(clf=lda)
+            save = classification(
+                clf, crossval, data, labels, groups, N_PERM, n_jobs=-1
+            )
 
-            final_save["n_rep"] = N_BOOTSTRAPS
-            if BOOTSTRAP:
-                final_save["auc_score"] = np.mean(final_save["auc_score"])
-                final_save["acc_score"] = np.mean(final_save["acc_score"])
+            print(save["acc_score"])
+            if i == 0:
+                final_save = save
+            elif BOOTSTRAP or REDUCED:
+                for key, value in save.items():
+                    final_save[key] += value
+
+            final_save["n_rep"] = i
             savemat(file_path, final_save)
 
-            print(
-                "accuracy for %s %s : %0.2f (+/- %0.2f)"
-                % (state, freq, np.mean(save["acc_score"]), np.std(save["acc"]))
-            )
-            if PERM:
-                print("pval = {}".format(save["acc_pvalue"]))
+        final_save["n_rep"] = N_BOOTSTRAPS
+        if BOOTSTRAP:
+            final_save["auc_score"] = np.mean(final_save["auc_score"])
+            final_save["acc_score"] = np.mean(final_save["acc_score"])
+        savemat(file_path, final_save)
 
-        else:
-            print(data_file_path.name + " Not found")
+        print(
+            "accuracy for %s %s : %0.2f (+/- %0.2f)"
+            % (state, freq, np.mean(save["acc_score"]), np.std(save["acc"]))
+        )
+        if PERM:
+            print("pval = {}".format(save["acc_pvalue"]))
+
+    else:
+        print(data_file_path.name + " Not found")
 
 
 if __name__ == "__main__":
