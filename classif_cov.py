@@ -53,6 +53,19 @@ SAVE_PATH = SAVE_PATH / NAME
 print(NAME, PREFIX)
 
 
+def proper_loadmat(file_path):
+    data = loadmat(file_path)
+    to_del = []
+    for key, value in data.items():
+        if key.startswith("__"):
+            to_del.append(key)
+        else:
+            data[key] = value.squeeze().tolist()
+    for key in to_del:
+        del data[key]
+    return data
+
+
 def classif_cov(state):
     """Where the magic happens"""
     print(state)
@@ -74,8 +87,8 @@ def classif_cov(state):
     if not file_path.isfile():
         n_rep = 0
     else:
-        final_save = loadmat(file_path)
-        n_rep = int(final_save["n_rep"])
+        final_save = proper_loadmat(file_path)
+        n_rep = final_save["n_rep"]
     print("starting from i={}".format(n_rep))
 
     file_name = NAME + "_{}.mat".format(state)

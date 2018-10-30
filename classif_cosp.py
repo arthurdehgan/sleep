@@ -54,6 +54,19 @@ SAVE_PATH = SAVE_PATH / NAME
 print(NAME, PREFIX)
 
 
+def proper_loadmat(file_path):
+    data = loadmat(file_path)
+    to_del = []
+    for key, value in data.items():
+        if key.startswith("__"):
+            to_del.append(key)
+        else:
+            data[key] = value.squeeze().tolist()
+    for key in to_del:
+        del data[key]
+    return data
+
+
 def classif_cosp(state, freq):
     """Where the magic happens"""
     print(state, freq)
@@ -80,7 +93,7 @@ def classif_cosp(state, freq):
     if not file_path.isfile():
         n_rep = 0
     else:
-        final_save = loadmat(file_path)
+        final_save = proper_loadmat(file_path)
         n_rep = int(final_save["n_rep"])
     print("Starting from i={}".format(n_rep))
 
