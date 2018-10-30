@@ -81,7 +81,8 @@ def classif_cosp(state, freq):
         n_rep = 0
     else:
         final_save = loadmat(file_path)
-        n_rep = final_save["n_rep"]
+        n_rep = int(final_save["n_rep"])
+    print("Starting from i={}".format(n_rep))
 
     file_name = NAME + "_{}_{}_{}_{:.2f}.mat".format(state, freq, WINDOW, OVERLAP)
     data_file_path = SAVE_PATH / file_name
@@ -143,7 +144,10 @@ def classif_cosp(state, freq):
 
 if __name__ == "__main__":
     TIMELAPSE_START = time()
-    ARGS = sys.argv[1:][0].split("_")
+    if len(sys.argv) > 1:
+        ARGS = sys.argv[1:][0].split("_")
+    else:
+        ARGS = []
     if ARGS == []:
         for freq, state in product(FREQ_DICT, STATE_LIST):
             classif_cosp(state, freq)

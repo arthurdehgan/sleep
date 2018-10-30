@@ -75,7 +75,8 @@ def classif_cov(state):
         n_rep = 0
     else:
         final_save = loadmat(file_path)
-        n_rep = final_save["n_rep"]
+        n_rep = int(final_save["n_rep"])
+    print("starting from i={}".format(n_rep))
 
     file_name = NAME + "_{}.mat".format(state)
     data_file_path = SAVE_PATH / file_name
@@ -137,7 +138,10 @@ def classif_cov(state):
 
 if __name__ == "__main__":
     TIMELAPSE_START = time()
-    ARGS = sys.argv[1:]
+    if len(sys.argv) > 1:
+        ARGS = sys.argv[1:]
+    else:
+        ARGS = []
     if ARGS == []:
         for state in STATE_LIST:
             classif_cov(state)
