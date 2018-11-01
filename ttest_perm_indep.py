@@ -332,3 +332,4 @@ if __name__ == "__main__":
     )
     tval3, pval3 = ttest_perm_unpaired(cond1, cond2, n_perm=100, correction="fdr")
     val, pval4 = relative_perm(cond1, cond2, n_perm=10)
+    print(pval, pval2, pval4, pval3)

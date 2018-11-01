@@ -5,6 +5,7 @@ from scipy.stats import zscore, binom
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from utils import compute_pval
 
 # from matplotlib import ticker
 from params import SAVE_PATH, STATE_LIST, CHANNEL_NAMES
@@ -18,15 +19,16 @@ POS_FILE = SAVE_PATH / "../Coord_EEG_1020.mat"
 SENSORS_POS = loadmat(POS_FILE)["Cor"]
 # FREQS = ['Delta', 'Theta', 'Alpha', 'Sigma', 'Beta', 'Gamma1', 'Gamma2']
 FREQS = ["Delta", "Theta", "Alpha", "Sigma", "Beta"]
-# PREFIX = 'bootstrapped_perm_subsamp_'
-SOLVER = "svd"
+# PREFIX = "bootstrapped_perm_subsamp_"
 PREFIX = "perm_"
+SUBSAMP = "subsamp" in PREFIX.split("_")
 WINDOW = 1000
 OVERLAP = 0
 PVAL = .01
 BINOM = False
-info_data = pd.read_csv(SAVE_PATH / "info_data.csv")
-TRIALS = list(info_data.iloc[36])[1:-2]
+CORRECTION = True
+INFO_DATA = pd.read_csv(SAVE_PATH / "info_data.csv")[STATE_LIST]
+TRIALS = list(INFO_DATA.iloc[36])
 
 for stage in STATE_LIST:
 
@@ -34,24 +36,33 @@ for stage in STATE_LIST:
     fig = plt.figure(figsize=(8, 10))
     for freq in FREQS:
 
-        scores, pvalues = [], []
+        scores, pscores_all_elec = [], []
         HR, LR = [], []
         for elec in CHANNEL_NAMES:
             file_name = PREFIX + "PSD_{}_{}_{}_{}_{:.2f}.mat".format(
                 stage, freq, elec, WINDOW, OVERLAP
             )
             try:
-                score = loadmat(RESULTS_PATH / file_name)
-                score = score["score"].ravel().mean()
-                # score = score['acc_score'].ravel().mean()
-                pvalue = loadmat(RESULTS_PATH / file_name)["pvalue"].ravel()
-                # pvalue = loadmat(RESULTS_PATH / file_name)['acc_pvalue'].ravel()
-            except TypeError:
+                results = loadmat(RESULTS_PATH / file_name)
+                if CORRECTION:
+                    pass
+                if SUBSAMP:
+                    score_key = "acc"
+                    pscores_key = "acc_pscores"
+                else:
+                    score_key = "score"
+                    pscores_key = "pscore"
+                score = float(results[score_key].ravel().mean())
+                pscores = list(results[pscores_key].squeeze())
+            except TypeError as error:
                 score = [.5]
                 pvalue = [1]
-                print(file_name)
-            scores.append(score * 100)
-            pvalues.append(pvalue[0])
+                print(error, file_name)
+            except:
+                print("Error: ", file_name)
+
+            scores.append(score)
+            pscores_all_elec += pscores
 
             file_name = "PSD_{}_{}_{}_{}_{:.2f}.mat".format(
                 stage, freq, elec, WINDOW, OVERLAP
@@ -65,6 +76,11 @@ for stage in STATE_LIST:
             HR.append(np.mean([e.ravel().mean() for e in PSD[:17]]))
             LR.append(np.mean([e.ravel().mean() for e in PSD[17:]]))
 
+        pvalues = []
+        for score in scores:
+            pvalues.append(compute_pval(score, pscores_all_elec))
+
+        pvalue = compute_pval(score, pscores)
         ttest = loadmat(TTEST_RESULTS_PATH / "ttest_perm_{}_{}.mat".format(stage, freq))
         tt_pvalues = ttest["p_values"].ravel()
         t_values = zscore(ttest["t_values"].ravel())
@@ -166,6 +182,6 @@ for stage in STATE_LIST:
         left=None, bottom=0.05, right=None, top=None, wspace=None, hspace=None
     )
     plt.tight_layout()
-    file_name = "topomap_{}_{}_p{}".format(SOLVER, stage, str(PVAL)[2:])
+    file_name = "topomap_{}{}_p{}".format(PREFIX, stage, str(PVAL)[2:])
     print(file_name)
     plt.savefig(SAVE_PATH / "../figures" / file_name, dpi=400)

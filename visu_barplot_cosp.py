@@ -25,8 +25,8 @@ NAME_COSP = "subsamp_cosp"
 NAME_COV = "subsamp_cov"
 PREFIX = "bootstrapped_classif_"
 MOY = "moy" in NAME_COSP
-SUBSAMP = "subsamp" in PREFIX
-COSP_PATH = SAVE_PATH / NAME_COSP / "results/backup_2610_guillimin"
+SUBSAMP = "subsamp" in NAME_COSP.split("_")
+COSP_PATH = SAVE_PATH / NAME_COSP / "results/"
 COV_PATH = SAVE_PATH / NAME_COV / "results"
 PERM = "perm" in PREFIX.split("_")
 PVAL = 0.01
@@ -44,6 +44,7 @@ GRAPH_TITLE = ""
 # GRAPH_TITLE = "Riemannian classifications"
 
 RESOLUTION = 300
+func_dict = {"sem": sem, "std": np.std}
 
 
 def autolabel(ax, rects, thresh):
@@ -70,7 +71,7 @@ def autolabel(ax, rects, thresh):
 
 
 # barplot parameters
-def visualisation(pval, scoring, print_sem):
+def visualisation(pval, scoring, print_sem=None):
     sem_suffix = ""
     # states_suffix = "_AllStates"
     # gamma_suffix = ""
@@ -88,7 +89,7 @@ def visualisation(pval, scoring, print_sem):
     # else:
     # groups = STATE_LIST
     groups = STATE_LIST
-    if not print_sem:
+    if print_sem is None:
         sem_suffix = "_NoSTD"
     # if not gamma:
     #     labels.remove("Gamma1")
@@ -131,7 +132,7 @@ def visualisation(pval, scoring, print_sem):
             except KeyError:
                 print(file_name, metric, "key error")
             temp.append(np.mean(data))
-            temp_sem.append(sem(data))
+            temp_sem.append(func_dict[print_sem](data))
             if PERM:
                 if threshold < 1:
                     threshold *= 100
@@ -141,16 +142,17 @@ def visualisation(pval, scoring, print_sem):
         if PERM:
             thresholds.append(temp_thresh)
 
-    info_data = pd.read_csv(SAVE_PATH / "info_data.csv")
+    info_data = pd.read_csv(SAVE_PATH / "info_data.csv")[STATE_LIST]
     if SUBSAMP:
         # n_trials = 36 * int(input('Number of trials per subject ? '))
-        n_trials = 36 * 153
+        n_trials = 36 * info_data.min().min()
+        print(info_data.min().min())
         trials = [n_trials] * len(groups)
     elif MOY:
         n_trials = 36
         trials = [n_trials] * len(groups)
     else:
-        trials = list(info_data.iloc[36])[1:-2]
+        trials = list(info_data.iloc[-1])
     if not PERM:
         thresholds = [
             100 * binom.isf(pval, n_trials, .5) / n_trials for n_trials in trials
@@ -206,11 +208,11 @@ def visualisation(pval, scoring, print_sem):
     ax.legend(
         bars,
         labels,
-        loc="upper center",
-        bbox_to_anchor=(0.5, -0.05),
-        fancybox=True,
-        shadow=True,
-        ncol=len(labels),
+        # loc="upper center",
+        # bbox_to_anchor=(0.5, -0.05),
+        fancybox=False,
+        shadow=False,
+        # ncol=len(labels),
     )
 
     file_name = PREFIX + f"{NAME_COSP}_{scoring}_{pval}_1000_0{sem_suffix}_NoGamma.png"
@@ -232,4 +234,4 @@ if __name__ == "__main__":
                     for states in options:
                         visualisation(pval, scoring, gamma, sem, states)
     """
-    visualisation(PVAL, "acc", True)
+    visualisation(PVAL, "acc", "sem")
