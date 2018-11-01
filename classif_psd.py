@@ -30,9 +30,9 @@ from params import (
     FREQ_DICT,
 )
 
-# PREFIX = "perm"
+PREFIX = "perm"
 # PREFIX = 'classif'
-PREFIX = "bootstrapped_perm_subsamp_"
+# PREFIX = "bootstrapped_perm_subsamp_"
 SOLVER = "svd"  # 'svd' 'lsqr'
 
 PREF_LIST = PREFIX.split("_")
@@ -86,7 +86,7 @@ def classif_psd(state, elec):
                     clf, sl2go, data, labels, groups, N_PERM, n_jobs=-1
                 )
 
-                if BOOTSTRAP or REDUCED:
+                if BOOTSTRAP:
                     if i == 0:
                         final_save = save
                     else:
