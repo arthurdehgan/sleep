@@ -86,12 +86,11 @@ def classif_psd(state, elec):
                     clf, sl2go, data, labels, groups, N_PERM, n_jobs=-1
                 )
 
-                if BOOTSTRAP:
-                    if i == 0:
-                        final_save = save
-                    else:
-                        for key, value in save.items():
-                            final_save[key] += value
+                if i == 0:
+                    final_save = save
+                else:
+                    for key, value in save.items():
+                        final_save[key] += value
 
             final_save["n_rep"] = N_BOOTSTRAPS
             final_save["auc_score"] = np.mean(final_save["auc_score"])
