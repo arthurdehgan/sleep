@@ -11,7 +11,6 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.utils.fixes import signature, comb
 from scipy.io import loadmat, savemat
 from scipy.signal import welch
-import h5py
 import numpy as np
 from numpy.random import permutation
 from path import Path as path
@@ -336,29 +335,29 @@ def split_cycles(data, sub, duree=1200):
     return cycles
 
 
-def convert_sleep_data(data_path, sub_i, elec=None):
-    """Load the samples of a subject for a sleepstate."""
-    tempFileName = data_path / "s%i_sleep.mat" % (sub_i)
-    try:
-        if elec is None:
-            dataset = np.asarray(h5py.File(tempFileName, "r")["m_data"])[:, :19]
-        else:
-            dataset = np.asarray(h5py.File(tempFileName, "r")["m_data"])[:, elec]
-    except IOError:
-        print(tempFileName, "not found")
-    cycles = split_cycles(dataset, sub_i)
-    dataset = []
-    for i, cycle in enumerate(cycles):
-        for stage, secs in cycle.items():
-            if len(secs) != 0:
-                secs = np.array(secs)
-                save = np.concatenate(
-                    [secs[i : i + 30] for i in range(0, len(secs), 30)]
-                )
-                savemat(
-                    data_path / "{}_s{}_cycle{}".format(stage, sub_i, i + 1),
-                    {stage: save},
-                )
+# def convert_sleep_data(data_path, sub_i, elec=None):
+#     """Load the samples of a subject for a sleepstate."""
+#     tempFileName = data_path / "s%i_sleep.mat" % (sub_i)
+#     try:
+#         if elec is None:
+#             dataset = np.asarray(h5py.File(tempFileName, "r")["m_data"])[:, :19]
+#         else:
+#             dataset = np.asarray(h5py.File(tempFileName, "r")["m_data"])[:, elec]
+#     except IOError:
+#         print(tempFileName, "not found")
+#     cycles = split_cycles(dataset, sub_i)
+#     dataset = []
+#     for i, cycle in enumerate(cycles):
+#         for stage, secs in cycle.items():
+#             if len(secs) != 0:
+#                 secs = np.array(secs)
+#                 save = np.concatenate(
+#                     [secs[i : i + 30] for i in range(0, len(secs), 30)]
+#                 )
+#                 savemat(
+#                     data_path / "{}_s{}_cycle{}".format(stage, sub_i, i + 1),
+#                     {stage: save},
+#                 )
 
 
 def merge_S3_S4(data_path, sub_i, cycle):
