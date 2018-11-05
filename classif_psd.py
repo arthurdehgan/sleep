@@ -30,8 +30,9 @@ from params import (
     FREQ_DICT,
 )
 
-PREFIX = "perm"
-# PREFIX = 'classif'
+# NAME = "PSD"
+NAME = "zscore_PSD"
+PREFIX = "perm_"
 # PREFIX = "bootstrapped_perm_subsamp_"
 SOLVER = "svd"  # 'svd' 'lsqr'
 
@@ -42,7 +43,7 @@ PERM = "perm" in PREF_LIST
 N_PERM = 999 if PERM else None
 N_BOOTSTRAPS = 100 if BOOTSTRAP else 1
 
-SAVE_PATH = SAVE_PATH / "psd"
+SAVE_PATH /= NAME
 
 
 def classif_psd(state, elec):
@@ -61,7 +62,7 @@ def classif_psd(state, elec):
     for freq in FREQ_DICT:
         print(state, elec, freq)
 
-        data_file_name = "PSD_{}_{}_{}_{}_{:.2f}.mat".format(
+        data_file_name = NAME + "_{}_{}_{}_{}_{:.2f}.mat".format(
             state, freq, elec, WINDOW, OVERLAP
         )
 
