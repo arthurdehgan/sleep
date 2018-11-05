@@ -30,8 +30,8 @@ from params import (
     FREQ_DICT,
 )
 
-# NAME = "PSD"
-NAME = "zscore_PSD"
+# NAME = "psd"
+NAME = "zscore_psd"
 PREFIX = "perm_"
 # PREFIX = "bootstrapped_perm_subsamp_"
 SOLVER = "svd"  # 'svd' 'lsqr'
