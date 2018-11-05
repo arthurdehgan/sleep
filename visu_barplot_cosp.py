@@ -15,13 +15,12 @@ from scipy.stats import binom
 # Path where the figure will be saved
 FIG_PATH = SAVE_PATH.dirname() / "figures"
 # Path where the results are loaded from
-# PREFIX = "classif_"
-# PREFIX = "perm_"
 # NAME_COSP = "moy_cosp"
-# NAME_COSP = "cosp"
-NAME_COSP = "subsamp_cosp"
 # NAME_COV = "moy_cov"
+# NAME_COSP = "cosp"
 # NAME_COV = "cov"
+# PREFIX = "classif_"
+NAME_COSP = "subsamp_cosp"
 NAME_COV = "subsamp_cov"
 PREFIX = "bootstrapped_classif_"
 MOY = "moy" in NAME_COSP
@@ -29,7 +28,7 @@ SUBSAMP = "subsamp" in NAME_COSP.split("_")
 COSP_PATH = SAVE_PATH / NAME_COSP / "results/"
 COV_PATH = SAVE_PATH / NAME_COV / "results"
 PERM = "perm" in PREFIX.split("_")
-PVAL = 0.01
+PVAL = 0.001
 if "Gamma1" in FREQ_DICT:
     del FREQ_DICT["Gamma1"]
 

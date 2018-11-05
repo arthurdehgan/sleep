@@ -19,8 +19,8 @@ POS_FILE = SAVE_PATH / "../Coord_EEG_1020.mat"
 SENSORS_POS = loadmat(POS_FILE)["Cor"]
 # FREQS = ['Delta', 'Theta', 'Alpha', 'Sigma', 'Beta', 'Gamma1', 'Gamma2']
 FREQS = ["Delta", "Theta", "Alpha", "Sigma", "Beta"]
-# PREFIX = "bootstrapped_perm_subsamp_"
-PREFIX = "perm_"
+PREFIX = "bootstrapped_perm_subsamp_"
+# PREFIX = "perm_"
 SUBSAMP = "subsamp" in PREFIX.split("_")
 WINDOW = 1000
 OVERLAP = 0
@@ -44,14 +44,12 @@ for stage in STATE_LIST:
             )
             try:
                 results = loadmat(RESULTS_PATH / file_name)
-                if CORRECTION:
-                    pass
-                if SUBSAMP:
-                    score_key = "acc"
-                    pscores_key = "acc_pscores"
-                else:
-                    score_key = "score"
-                    pscores_key = "pscore"
+                # if SUBSAMP:
+                score_key = "acc"
+                pscores_key = "acc_pscores"
+                # else:
+                #     score_key = "score"
+                #     pscores_key = "pscore"
                 score = float(results[score_key].ravel().mean())
                 pscores = list(results[pscores_key].squeeze())
             except TypeError as error:
@@ -80,13 +78,12 @@ for stage in STATE_LIST:
         for score in scores:
             pvalues.append(compute_pval(score, pscores_all_elec))
 
-        pvalue = compute_pval(score, pscores)
         ttest = loadmat(TTEST_RESULTS_PATH / "ttest_perm_{}_{}.mat".format(stage, freq))
         tt_pvalues = ttest["p_values"].ravel()
         t_values = zscore(ttest["t_values"].ravel())
         HR = np.asarray(HR)
         LR = np.asarray(LR)
-        DA = np.asarray(scores)
+        DA = 100 * np.asarray(scores)
         da_pvalues = np.asarray(pvalues)
         # RPC = zscore((HR - LR) / LR)
         # HR = HR / max(abs(HR))
@@ -142,7 +139,7 @@ for stage in STATE_LIST:
                 "name": "Decoding Accuracies (%)",
                 "cmap": "viridis",
                 "mask": da_mask,
-                "cbarlim": [50, 65],
+                "cbarlim": [50, 60],
                 "data": DA,
             },
         ]
