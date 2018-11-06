@@ -12,22 +12,27 @@ from params import SAVE_PATH, STATE_LIST, CHANNEL_NAMES
 
 plt.switch_backend("agg")
 
-DATA_PATH = SAVE_PATH / "psd"
+NAME = "psd"
+# NAME = "zscore_psd"
+PREFIX = "bootstrapped_perm_subsamp_"
+# PREFIX = "perm_"
+
+DATA_PATH = SAVE_PATH / NAME
 TTEST_RESULTS_PATH = DATA_PATH / "results"
 RESULTS_PATH = DATA_PATH / "results/"
 POS_FILE = SAVE_PATH / "../Coord_EEG_1020.mat"
+INFO_DATA = pd.read_csv(SAVE_PATH / "info_data.csv")[STATE_LIST]
 SENSORS_POS = loadmat(POS_FILE)["Cor"]
-# FREQS = ['Delta', 'Theta', 'Alpha', 'Sigma', 'Beta', 'Gamma1', 'Gamma2']
+
 FREQS = ["Delta", "Theta", "Alpha", "Sigma", "Beta"]
-PREFIX = "bootstrapped_perm_subsamp_"
-# PREFIX = "perm_"
+STATE_LIST = ["NREM"]
 SUBSAMP = "subsamp" in PREFIX.split("_")
+BOOTSTRAPPED = "bootstrapped" in PREFIX.split("_")
 WINDOW = 1000
 OVERLAP = 0
 PVAL = .01
 BINOM = False
-CORRECTION = True
-INFO_DATA = pd.read_csv(SAVE_PATH / "info_data.csv")[STATE_LIST]
+MAXSTAT_ELEC = True
 TRIALS = list(INFO_DATA.iloc[36])
 
 for stage in STATE_LIST:
@@ -39,8 +44,10 @@ for stage in STATE_LIST:
         scores, pscores_all_elec = [], []
         HR, LR = [], []
         for elec in CHANNEL_NAMES:
-            file_name = PREFIX + "PSD_{}_{}_{}_{}_{:.2f}.mat".format(
-                stage, freq, elec, WINDOW, OVERLAP
+            file_name = (
+                PREFIX
+                + NAME
+                + "_{}_{}_{}_{}_{:.2f}.mat".format(stage, freq, elec, WINDOW, OVERLAP)
             )
             try:
                 results = loadmat(RESULTS_PATH / file_name)
@@ -52,17 +59,23 @@ for stage in STATE_LIST:
                 #     pscores_key = "pscore"
                 score = float(results[score_key].ravel().mean())
                 pscores = list(results[pscores_key].squeeze())
+                pscores_corrected = []
+                if BOOTSTRAPPED:
+                    n_rep = int(results["n_rep"])
+                    for i in range(0, len(pscores), n_rep):
+                        best_ps = np.max(pscores[i : i + n_rep])
+                        pscores_corrected.append(best_ps)
+                else:
+                    pscores_corrected = pscores
             except TypeError as error:
                 score = [.5]
                 pvalue = [1]
                 print(error, file_name)
-            except:
-                print("Error: ", file_name)
 
             scores.append(score)
-            pscores_all_elec += pscores
+            pscores_all_elec.append(pscores_corrected)
 
-            file_name = "PSD_{}_{}_{}_{}_{:.2f}.mat".format(
+            file_name = NAME + "_{}_{}_{}_{}_{:.2f}.mat".format(
                 stage, freq, elec, WINDOW, OVERLAP
             )
             try:
@@ -74,9 +87,17 @@ for stage in STATE_LIST:
             HR.append(np.mean([e.ravel().mean() for e in PSD[:17]]))
             LR.append(np.mean([e.ravel().mean() for e in PSD[17:]]))
 
+        pscores_all_elec = np.asarray(pscores_all_elec)
+        if MAXSTAT_ELEC:
+            pscores_all_elec = np.max(pscores_all_elec, axis=0)
+
         pvalues = []
-        for score in scores:
-            pvalues.append(compute_pval(score, pscores_all_elec))
+        for i, score in enumerate(scores):
+            if MAXSTAT_ELEC:
+                pscores = pscores_all_elec
+            else:
+                pscores = pscores_all_elec[i]
+            pvalues.append(compute_pval(score, pscores))
 
         ttest = loadmat(TTEST_RESULTS_PATH / "ttest_perm_{}_{}.mat".format(stage, freq))
         tt_pvalues = ttest["p_values"].ravel()
@@ -93,14 +114,14 @@ for stage in STATE_LIST:
 
         da_mask = np.full((len(CHANNEL_NAMES)), False, dtype=bool)
         tt_mask = np.full((len(CHANNEL_NAMES)), False, dtype=bool)
-        tt_mask[tt_pvalues <= PVAL] = True
+        tt_mask[tt_pvalues < PVAL] = True
         if BINOM:
             thresholds = [
                 100 * binom.isf(PVAL, n_trials, .5) / n_trials for n_trials in TRIALS
             ]
             da_mask[DA > thresholds[j]] = True
         else:
-            da_mask[da_pvalues <= PVAL] = True
+            da_mask[da_pvalues < PVAL] = True
 
         mask_params = dict(
             marker="*", markerfacecolor="white", markersize=9, markeredgecolor="white"
@@ -179,6 +200,6 @@ for stage in STATE_LIST:
         left=None, bottom=0.05, right=None, top=None, wspace=None, hspace=None
     )
     plt.tight_layout()
-    file_name = "topomap_{}{}_p{}".format(PREFIX, stage, str(PVAL)[2:])
+    file_name = "topomap_{}{}_{}_p{}".format(PREFIX, NAME, stage, str(PVAL)[2:])
     print(file_name)
     plt.savefig(SAVE_PATH / "../figures" / file_name, dpi=400)
