@@ -7,8 +7,6 @@ Author: Arthur Dehgan
 import sys
 from time import time
 from itertools import product
-
-# from joblib import Parallel, delayed
 import pandas as pd
 import numpy as np
 from scipy.io import savemat, loadmat
@@ -30,8 +28,8 @@ from params import (
     FREQ_DICT,
 )
 
-# NAME = "psd"
-NAME = "zscore_psd"
+NAME = "psd"
+# NAME = "zscore_psd"
 PREFIX = "perm_"
 # PREFIX = "bootstrapped_perm_subsamp_"
 SOLVER = "svd"  # 'svd' 'lsqr'
