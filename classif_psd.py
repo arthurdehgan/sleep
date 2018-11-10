@@ -46,6 +46,19 @@ N_BOOTSTRAPS = 100 if BOOTSTRAP else 1
 SAVE_PATH /= NAME
 
 
+def proper_loadmat(file_path):
+    data = loadmat(file_path)
+    to_del = []
+    for key, value in data.items():
+        if key.startswith("__"):
+            to_del.append(key)
+        else:
+            data[key] = value.squeeze().tolist()
+    for key in to_del:
+        del data[key]
+    return data
+
+
 def classif_psd(state, elec):
     global SUBSAMPLE, SAVE_PATH
     if SUBSAMPLE:
@@ -73,39 +86,52 @@ def classif_psd(state, elec):
         save_file_path = SAVE_PATH / "results" / save_file_name
 
         if not save_file_path.isfile():
-            for i in range(N_BOOTSTRAPS):
-                data = loadmat(data_file_path)
-                if SUBSAMPLE:
-                    data = prepare_data(data, n_trials=N_TRIALS, random_state=i)
-                else:
-                    data = prepare_data(data)
+            n_rep = 0
+        else:
+            final_save = proper_loadmat(save_file_path)
+            n_rep = int(final_save["n_rep"])
+        print("Starting from i={}".format(n_rep))
 
-                data = np.array(data).reshape(len(data), 1)
-                sl2go = StratifiedLeave2GroupsOut()
-                clf = LDA(solver=SOLVER)
-                save = classification(
-                    clf, sl2go, data, labels, groups, N_PERM, n_jobs=-1
-                )
+        for i in range(n_rep, N_BOOTSTRAPS):
+            data = loadmat(data_file_path)
+            if SUBSAMPLE:
+                data = prepare_data(data, n_trials=N_TRIALS, random_state=i)
+            else:
+                data = prepare_data(data)
 
-                if i == 0:
-                    final_save = save
-                else:
-                    for key, value in save.items():
-                        final_save[key] += value
+            data = np.array(data).reshape(len(data), 1)
+            sl2go = StratifiedLeave2GroupsOut()
+            clf = LDA(solver=SOLVER)
+            save = classification(clf, sl2go, data, labels, groups, N_PERM, n_jobs=-1)
 
-            final_save["n_rep"] = N_BOOTSTRAPS
-            final_save["auc_score"] = np.mean(final_save["auc_score"])
-            final_save["acc_score"] = np.mean(final_save["acc_score"])
+            print(save["acc_score"])
+            if i == 0:
+                final_save = save
+            elif BOOTSTRAP:
+                for key, value in save.items():
+                    final_save[key] += value
+
+            final_save["n_rep"] = i + 1
             savemat(save_file_path, final_save)
 
-            if PERM:
-                print(
-                    "{} : {:.2f} significatif a p={:.4f}".format(
-                        freq, final_save["acc_score"], final_save["acc_pvalue"]
-                    )
+        if BOOTSTRAP:
+            final_save["auc_score"] = np.mean(final_save["auc_score"])
+            final_save["acc_score"] = np.mean(final_save["acc_score"])
+        savemat(save_file_path, final_save)
+
+        print(
+            "accuracy for {} {} : {:.2f} (+/- {:.2f})".format(
+                state, elec, final_save["acc_score"], np.std(final_save["acc"])
+            )
+        )
+        if PERM:
+            print(
+                "{} : {:.2f} significatif a p={:.4f}".format(
+                    freq, final_save["acc_score"], final_save["acc_pvalue"]
                 )
-            else:
-                print("{} : {:.2f}".format(freq, save["acc_score"]))
+            )
+        else:
+            print("{} : {:.2f}".format(freq, save["acc_score"]))
 
 
 if __name__ == "__main__":
