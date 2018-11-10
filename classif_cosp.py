@@ -161,8 +161,8 @@ if __name__ == "__main__":
     else:
         ARGS = []
     if ARGS == []:
-        for freq, state in product(FREQ_DICT, STATE_LIST):
-            classif_cosp(state, freq)
+        for fr, st in product(FREQ_DICT, STATE_LIST):
+            classif_cosp(st, fr)
     else:
         print(ARGS)
         classif_cosp(ARGS[0], ARGS[1])

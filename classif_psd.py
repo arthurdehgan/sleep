@@ -60,14 +60,13 @@ def proper_loadmat(file_path):
 
 
 def classif_psd(state, elec):
-    global SUBSAMPLE, SAVE_PATH
     if SUBSAMPLE:
         info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
-        N_TRIALS = info_data.min().min()
-        N_SUBS = len(info_data) - 1
-        groups = [i for i in range(N_SUBS) for _ in range(N_TRIALS)]
-        N_TOTAL = N_TRIALS * N_SUBS
-        labels = [0 if i < N_TOTAL / 2 else 1 for i in range(N_TOTAL)]
+        n_trials = info_data.min().min()
+        n_subs = len(info_data) - 1
+        groups = [i for i in range(n_subs) for _ in range(n_trials)]
+        n_total = n_trials * n_subs
+        labels = [0 if i < n_total / 2 else 1 for i in range(n_total)]
     else:
         labels = loadmat(LABEL_PATH / state + "_labels.mat")["y"].ravel()
         labels, groups = create_groups(labels)
@@ -95,7 +94,7 @@ def classif_psd(state, elec):
         for i in range(n_rep, N_BOOTSTRAPS):
             data = loadmat(data_file_path)
             if SUBSAMPLE:
-                data = prepare_data(data, n_trials=N_TRIALS, random_state=i)
+                data = prepare_data(data, n_trials=n_trials, random_state=i)
             else:
                 data = prepare_data(data)
 
@@ -138,8 +137,8 @@ if __name__ == "__main__":
     TIMELAPSE_START = time()
     ARGS = sys.argv[1:][0].split("_")
     if ARGS == []:
-        for state, elec in product(STATE_LIST, CHANNEL_NAMES):
-            classif_psd(state, elec)
+        for st, el in product(STATE_LIST, CHANNEL_NAMES):
+            classif_psd(st, el)
     else:
         print(ARGS)
         classif_psd(ARGS[0], ARGS[1])
