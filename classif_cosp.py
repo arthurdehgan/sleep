@@ -138,7 +138,6 @@ def classif_cosp(state, freq):
             final_save["n_rep"] = i + 1
             savemat(file_path, final_save)
 
-        final_save["n_rep"] = N_BOOTSTRAPS
         if BOOTSTRAP:
             final_save["auc_score"] = np.mean(final_save["auc_score"])
             final_save["acc_score"] = np.mean(final_save["acc_score"])
