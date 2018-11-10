@@ -73,7 +73,14 @@ def classif_psd(state, elec):
         save_file_path = SAVE_PATH / "results" / save_file_name
 
         if not save_file_path.isfile():
-            for i in range(N_BOOTSTRAPS):
+            n_rep = 0
+        else:
+            final_save = proper_loadmat(save_file_path)
+            n_rep = int(final_save["n_rep"])
+        print("Starting from i={}".format(n_rep))
+
+        if not save_file_path.isfile():
+            for i in range(n_rep, N_BOOTSTRAPS):
                 data = loadmat(data_file_path)
                 if SUBSAMPLE:
                     data = prepare_data(data, n_trials=N_TRIALS, random_state=i)
@@ -87,17 +94,26 @@ def classif_psd(state, elec):
                     clf, sl2go, data, labels, groups, N_PERM, n_jobs=-1
                 )
 
+                print(save["acc_score"])
                 if i == 0:
                     final_save = save
-                else:
+                elif BOOTSTRAP:
                     for key, value in save.items():
                         final_save[key] += value
 
+                final_save["n_rep"] = i + 1
+                savemat(file_path, final_save)
+
             final_save["n_rep"] = N_BOOTSTRAPS
-            final_save["auc_score"] = np.mean(final_save["auc_score"])
-            final_save["acc_score"] = np.mean(final_save["acc_score"])
+            if BOOTSTRAP:
+                final_save["auc_score"] = np.mean(final_save["auc_score"])
+                final_save["acc_score"] = np.mean(final_save["acc_score"])
             savemat(save_file_path, final_save)
 
+            print(
+                "accuracy for %s %s : %0.2f (+/- %0.2f)"
+                % (state, elec, final_save["acc_score"], np.std(final_save["acc"])
+            )
             if PERM:
                 print(
                     "{} : {:.2f} significatif a p={:.4f}".format(
