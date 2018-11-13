@@ -73,7 +73,6 @@ def classif_psd(state, elec):
 
     for freq in FREQ_DICT:
         print(state, elec, freq)
-
         data_file_name = NAME + "_{}_{}_{}_{}_{:.2f}.mat".format(
             state, freq, elec, WINDOW, OVERLAP
         )
@@ -83,6 +82,7 @@ def classif_psd(state, elec):
         data_file_path = SAVE_PATH / data_file_name
 
         save_file_path = SAVE_PATH / "results" / save_file_name
+        breakpoint()
 
         if not save_file_path.isfile():
             n_rep = 0
@@ -135,7 +135,14 @@ def classif_psd(state, elec):
 
 if __name__ == "__main__":
     TIMELAPSE_START = time()
-    ARGS = sys.argv[1:][0].split("_")
+    ARGS = sys.argv
+    if len(ARGS) > 2:
+        ARGS = sys.argv[1:]
+    elif len(ARGS) == 2:
+        ARGS = sys.argv[1][0].split("_")
+    else:
+        ARGS = []
+
     if ARGS == []:
         for st, el in product(STATE_LIST, CHANNEL_NAMES):
             classif_psd(st, el)
