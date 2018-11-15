@@ -17,9 +17,8 @@ REGS = ["Prefrontal", "Frontal", "Temporal", "Central", "Parietal", "Occipital"]
 REGIONS = {
     "Occipital": ["O1", "O2"],
     "Prefrontal": ["Fp1", "Fp2"],
-    "Frontal": ["FC1", "FC2", "F3", "F4", "Fz"],
-    "Parietal": ["P4", "P3", "Pz"],
-    "Central": ["Cz", "C3", "C4", "CP1", "CP2"],
+    "Fronto-Central": ["Cz", "C3", "C4", "FC1", "FC2", "F3", "F4", "Fz"],
+    "Centro-Parietal": ["CP1", "CP2", "P4", "P3", "Pz"],
     "Temporal": ["T3", "T4"],
 }
 
