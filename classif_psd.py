@@ -33,7 +33,7 @@ from params import (
 NAME = "psd"
 # NAME = "zscore_psd"
 # PREFIX = "perm_"
-PREFIX = "bootstrapped_perm_subsamp_"
+PREFIX = "bootstrapped_subsamp_"
 SOLVER = "svd"  # 'svd' 'lsqr'
 
 PREF_LIST = PREFIX.split("_")
@@ -41,7 +41,7 @@ BOOTSTRAP = "bootstrapped" in PREF_LIST
 SUBSAMPLE = "subsamp" in PREF_LIST
 PERM = "perm" in PREF_LIST
 N_PERM = 999 if PERM else None
-N_BOOTSTRAPS = 100 if BOOTSTRAP else 1
+N_BOOTSTRAPS = 1000 if BOOTSTRAP else 1
 
 SAVE_PATH /= NAME
 
