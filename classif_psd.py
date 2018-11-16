@@ -33,8 +33,8 @@ NAME = "psd"
 # NAME = "zscore_psd"
 # PREFIX = "perm_"
 # PREFIX = "bootstrapped_perm_subsamp_"
-# PREFIX = "bootstrapped_subsamp_"
-PREFIX = "bootstrapped_adapt_"
+PREFIX = "bootstrapped_subsamp_"
+# PREFIX = "bootstrapped_adapt_"
 SOLVER = "svd"  # 'svd' 'lsqr'
 
 PREF_LIST = PREFIX.split("_")
