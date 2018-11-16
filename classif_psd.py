@@ -82,7 +82,6 @@ def classif_psd(state, elec):
         data_file_path = SAVE_PATH / data_file_name
 
         save_file_path = SAVE_PATH / "results" / save_file_name
-        breakpoint()
 
         if not save_file_path.isfile():
             n_rep = 0
