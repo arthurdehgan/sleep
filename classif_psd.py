@@ -30,8 +30,8 @@ from params import (
 
 NAME = "psd"
 # NAME = "zscore_psd"
-PREFIX = "perm_"
-# PREFIX = "bootstrapped_perm_subsamp_"
+# PREFIX = "perm_"
+PREFIX = "bootstrapped_subsamp_"
 SOLVER = "svd"  # 'svd' 'lsqr'
 
 PREF_LIST = PREFIX.split("_")
@@ -39,7 +39,7 @@ BOOTSTRAP = "bootstrapped" in PREF_LIST
 SUBSAMPLE = "subsamp" in PREF_LIST
 PERM = "perm" in PREF_LIST
 N_PERM = 999 if PERM else None
-N_BOOTSTRAPS = 100 if BOOTSTRAP else 1
+N_BOOTSTRAPS = 1000 if BOOTSTRAP else 1
 
 SAVE_PATH /= NAME
 
@@ -80,7 +80,6 @@ def classif_psd(state, elec):
         data_file_path = SAVE_PATH / data_file_name
 
         save_file_path = SAVE_PATH / "results" / save_file_name
-        breakpoint()
 
         if not save_file_path.isfile():
             n_rep = 0
