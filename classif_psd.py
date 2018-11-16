@@ -46,15 +46,11 @@ SAVE_PATH /= NAME
 
 def proper_loadmat(file_path):
     data = loadmat(file_path)
-    to_del = []
+    clean_data = {}
     for key, value in data.items():
-        if key.startswith("__"):
-            to_del.append(key)
-        else:
-            data[key] = value.squeeze().tolist()
-    for key in to_del:
-        del data[key]
-    return data
+        if not key.startswith("__"):
+            clean_data[key] = value.squeeze().tolist()
+    return clean_data
 
 
 def classif_psd(state, elec):
