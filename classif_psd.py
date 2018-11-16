@@ -45,7 +45,7 @@ N_BOOTSTRAPS = 1000 if BOOTSTRAP else 1
 SAVE_PATH /= NAME
 
 
-def classif_psd(state, elec):
+def classif_psd(state, elec, n_jobs=-1):
     if SUBSAMPLE:
         info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
         n_trials = info_data.min().min()
@@ -86,7 +86,9 @@ def classif_psd(state, elec):
             data = np.array(data).reshape(len(data), 1)
             sl2go = StratifiedLeave2GroupsOut()
             clf = LDA(solver=SOLVER)
-            save = classification(clf, sl2go, data, labels, groups, N_PERM, n_jobs=-1)
+            save = classification(
+                clf, sl2go, data, labels, groups, N_PERM, n_jobs=n_jobs
+            )
 
             if i == 0:
                 final_save = save
@@ -95,7 +97,9 @@ def classif_psd(state, elec):
                     final_save[key] += value
 
             final_save["n_rep"] = i + 1
-            savemat(save_file_path, final_save)
+
+            if n_jobs == -1:
+                savemat(save_file_path, final_save)
 
         if BOOTSTRAP:
             final_save["auc_score"] = np.mean(final_save["auc_score"])
@@ -126,8 +130,12 @@ if __name__ == "__main__":
         ARGS = []
 
     if ARGS == []:
-        for st, el in product(STATE_LIST, CHANNEL_NAMES):
-            classif_psd(st, el)
+        from joblib import delayed, Parallel
+
+        Parallel(n_jobs=-1)(
+            delayed(classif_psd)(st, el, n_jobs=-1)
+            for st, el in product(STATE_LIST, CHANNEL_NAMES)
+        )
     else:
         print(ARGS)
         classif_psd(ARGS[0], ARGS[1])
