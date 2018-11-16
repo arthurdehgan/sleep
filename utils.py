@@ -75,7 +75,10 @@ def cross_val_scores(estimator, cv, X, y, groups=None, n_jobs=1):
         y_pred = test[0]
         y_test = test[1]
         acc = accuracy_score(y_test, y_pred)
-        auc = roc_auc_score(y_test, y_pred)
+        if not X.shape[1] > 1:
+            auc = roc_auc_score(y_test, y_pred)
+        else:
+            auc = 0
         accuracy.append(acc)
         auc_list.append(auc)
     return accuracy, auc_list
