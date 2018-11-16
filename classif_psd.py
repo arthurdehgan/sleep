@@ -44,22 +44,33 @@ N_BOOTSTRAPS = 100 if BOOTSTRAP else 1
 SAVE_PATH /= NAME
 
 
+def proper_loadmat(file_path):
+    data = loadmat(file_path)
+    to_del = []
+    for key, value in data.items():
+        if key.startswith("__"):
+            to_del.append(key)
+        else:
+            data[key] = value.squeeze().tolist()
+    for key in to_del:
+        del data[key]
+    return data
+
+
 def classif_psd(state, elec):
-    global SUBSAMPLE, SAVE_PATH
     if SUBSAMPLE:
         info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
-        N_TRIALS = info_data.min().min()
-        N_SUBS = len(info_data) - 1
-        groups = [i for i in range(N_SUBS) for _ in range(N_TRIALS)]
-        N_TOTAL = N_TRIALS * N_SUBS
-        labels = [0 if i < N_TOTAL / 2 else 1 for i in range(N_TOTAL)]
+        n_trials = info_data.min().min()
+        n_subs = len(info_data) - 1
+        groups = [i for i in range(n_subs) for _ in range(n_trials)]
+        n_total = n_trials * n_subs
+        labels = [0 if i < n_total / 2 else 1 for i in range(n_total)]
     else:
         labels = loadmat(LABEL_PATH / state + "_labels.mat")["y"].ravel()
         labels, groups = create_groups(labels)
 
     for freq in FREQ_DICT:
         print(state, elec, freq)
-
         data_file_name = NAME + "_{}_{}_{}_{}_{:.2f}.mat".format(
             state, freq, elec, WINDOW, OVERLAP
         )
@@ -69,49 +80,68 @@ def classif_psd(state, elec):
         data_file_path = SAVE_PATH / data_file_name
 
         save_file_path = SAVE_PATH / "results" / save_file_name
+        breakpoint()
 
         if not save_file_path.isfile():
-            for i in range(N_BOOTSTRAPS):
-                data = loadmat(data_file_path)
-                if SUBSAMPLE:
-                    data = prepare_data(data, n_trials=N_TRIALS, random_state=i)
-                else:
-                    data = prepare_data(data)
+            n_rep = 0
+        else:
+            final_save = proper_loadmat(save_file_path)
+            n_rep = int(final_save["n_rep"])
+        print("Starting from i={}".format(n_rep))
 
-                data = np.array(data).reshape(len(data), 1)
-                sl2go = StratifiedLeave2GroupsOut()
-                clf = LDA(solver=SOLVER)
-                save = classification(
-                    clf, sl2go, data, labels, groups, N_PERM, n_jobs=-1
-                )
+        for i in range(n_rep, N_BOOTSTRAPS):
+            data = loadmat(data_file_path)
+            if SUBSAMPLE:
+                data = prepare_data(data, n_trials=n_trials, random_state=i)
+            else:
+                data = prepare_data(data)
 
-                if i == 0:
-                    final_save = save
-                else:
-                    for key, value in save.items():
-                        final_save[key] += value
+            data = np.array(data).reshape(len(data), 1)
+            sl2go = StratifiedLeave2GroupsOut()
+            clf = LDA(solver=SOLVER)
+            save = classification(clf, sl2go, data, labels, groups, N_PERM, n_jobs=-1)
 
-            final_save["n_rep"] = N_BOOTSTRAPS
-            final_save["auc_score"] = np.mean(final_save["auc_score"])
-            final_save["acc_score"] = np.mean(final_save["acc_score"])
+            print(save["acc_score"])
+            if i == 0:
+                final_save = save
+            elif BOOTSTRAP:
+                for key, value in save.items():
+                    final_save[key] += value
+
+            final_save["n_rep"] = i + 1
             savemat(save_file_path, final_save)
 
-            if PERM:
-                print(
-                    "{} : {:.2f} significatif a p={:.4f}".format(
-                        freq, final_save["acc_score"], final_save["acc_pvalue"]
-                    )
+        if BOOTSTRAP:
+            final_save["auc_score"] = np.mean(final_save["auc_score"])
+            final_save["acc_score"] = np.mean(final_save["acc_score"])
+        savemat(save_file_path, final_save)
+
+        print(
+            "accuracy for {} {} : {:.2f} (+/- {:.2f})".format(
+                state, elec, final_save["acc_score"], np.std(final_save["acc"])
+            )
+        )
+        if PERM:
+            print(
+                "{} : {:.2f} significatif a p={:.4f}".format(
+                    freq, final_save["acc_score"], final_save["acc_pvalue"]
                 )
-            else:
-                print("{} : {:.2f}".format(freq, save["acc_score"]))
+            )
 
 
 if __name__ == "__main__":
     TIMELAPSE_START = time()
-    ARGS = sys.argv[1:][0].split("_")
+    ARGS = sys.argv
+    if len(ARGS) > 2:
+        ARGS = sys.argv[1:]
+    elif len(ARGS) == 2:
+        ARGS = sys.argv[1][0].split("_")
+    else:
+        ARGS = []
+
     if ARGS == []:
-        for state, elec in product(STATE_LIST, CHANNEL_NAMES):
-            classif_psd(state, elec)
+        for st, el in product(STATE_LIST, CHANNEL_NAMES):
+            classif_psd(st, el)
     else:
         print(ARGS)
         classif_psd(ARGS[0], ARGS[1])

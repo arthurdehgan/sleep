@@ -125,7 +125,7 @@ def ttest_perm_unpaired(
     return tval, pval
 
 
-def perm_test(cond1, cond2, n_perm, function, equal_var=False, n_jobs=-1):
+def perm_test(cond1, cond2, n_perm, function, equal_var=False, n_jobs=1):
     """permutation ttest.
 
     Parameters:
@@ -134,6 +134,8 @@ def perm_test(cond1, cond2, n_perm, function, equal_var=False, n_jobs=-1):
                       the independant conditions.
 
         n_perm: int, number of permutations to do, the more the better.
+
+        function: func, the function to execute in parallel on the data.
 
         equal_var: bool, see scipy.stats.ttest_ind.
 

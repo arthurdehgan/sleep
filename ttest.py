@@ -7,16 +7,19 @@ from joblib import Parallel, delayed
 from ttest_perm_indep import ttest_perm_unpaired
 from params import STATE_LIST, FREQ_DICT, SAVE_PATH, WINDOW, OVERLAP, CHANNEL_NAMES
 
-SAVE_PATH = SAVE_PATH / "psd"
+# NAME = "psd"
+NAME = "zscore_psd"
+SAVE_PATH = SAVE_PATH / NAME
 RESULT_PATH = SAVE_PATH / "results"
 n_perm = 9999
 
 
 def main(stade, freq):
+    print(stade, freq)
     HRs, LRs = [], []
     for elec in CHANNEL_NAMES:
 
-        file_path = SAVE_PATH / "PSD_{}_{}_{}_{}_{:.2f}.mat".format(
+        file_path = SAVE_PATH / NAME + "_{}_{}_{}_{}_{:.2f}.mat".format(
             stade, freq, elec, WINDOW, OVERLAP
         )
         try:
@@ -40,7 +43,7 @@ def main(stade, freq):
     HRs = np.asarray(HRs, dtype=float).T
     LRs = np.asarray(LRs, dtype=float).T
     tval, pvalues = ttest_perm_unpaired(
-        cond1=HRs, cond2=LRs, n_perm=n_perm, equal_var=False, two_tailed=True, n_jobs=-2
+        cond1=HRs, cond2=LRs, n_perm=n_perm, equal_var=False, two_tailed=True, n_jobs=-1
     )
 
     data = {"p_values": np.asarray(pvalues), "t_values": tval}
@@ -49,6 +52,6 @@ def main(stade, freq):
 
 
 if __name__ == "__main__":
-    Parallel(n_jobs=1)(
+    Parallel(n_jobs=-1)(
         delayed(main)(stade, freq) for stade in STATE_LIST for freq in FREQ_DICT
     )
