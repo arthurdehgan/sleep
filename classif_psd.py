@@ -32,12 +32,15 @@ from params import (
 NAME = "psd"
 # NAME = "zscore_psd"
 # PREFIX = "perm_"
-PREFIX = "bootstrapped_subsamp_"
+# PREFIX = "bootstrapped_perm_subsamp_"
+# PREFIX = "bootstrapped_subsamp_"
+PREFIX = "bootstrapped_adapt_"
 SOLVER = "svd"  # 'svd' 'lsqr'
 
 PREF_LIST = PREFIX.split("_")
 BOOTSTRAP = "bootstrapped" in PREF_LIST
 SUBSAMPLE = "subsamp" in PREF_LIST
+ADAPT = "adapt" in PREF_LIST
 PERM = "perm" in PREF_LIST
 N_PERM = 999 if PERM else None
 N_BOOTSTRAPS = 1000 if BOOTSTRAP else 1
@@ -49,6 +52,13 @@ def classif_psd(state, elec, n_jobs=-1):
     if SUBSAMPLE:
         info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
         n_trials = info_data.min().min()
+        n_subs = len(info_data) - 1
+        groups = [i for i in range(n_subs) for _ in range(n_trials)]
+        n_total = n_trials * n_subs
+        labels = [0 if i < n_total / 2 else 1 for i in range(n_total)]
+    elif ADAPT:
+        info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
+        n_trials = info_data.min()[state]
         n_subs = len(info_data) - 1
         groups = [i for i in range(n_subs) for _ in range(n_trials)]
         n_total = n_trials * n_subs
@@ -78,7 +88,7 @@ def classif_psd(state, elec, n_jobs=-1):
 
         for i in range(n_rep, N_BOOTSTRAPS):
             data = loadmat(data_file_path)
-            if SUBSAMPLE:
+            if SUBSAMPLE or ADAPT:
                 data = prepare_data(data, n_trials=n_trials, random_state=i)
             else:
                 data = prepare_data(data)
