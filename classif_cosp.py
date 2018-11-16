@@ -18,6 +18,7 @@ from utils import (
     elapsed_time,
     prepare_data,
     classification,
+    proper_loadmat,
 )
 from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW, OVERLAP, LABEL_PATH
 
@@ -52,15 +53,6 @@ else:
 
 SAVE_PATH = SAVE_PATH / NAME
 print(NAME, PREFIX)
-
-
-def proper_loadmat(file_path):
-    data = loadmat(file_path)
-    clean_data = {}
-    for key, value in data.items():
-        if not key.startswith("__"):
-            clean_data[key] = value.squeeze().tolist()
-    return clean_data
 
 
 def classif_cosp(state, freq):
@@ -152,14 +144,18 @@ def classif_cosp(state, freq):
 
 if __name__ == "__main__":
     TIMELAPSE_START = time()
-    if len(sys.argv) > 1:
+    ARGS = sys.argv
+    if len(ARGS) > 2:
+        ARGS = sys.argv[1:]
+    elif len(ARGS) == 2:
         ARGS = sys.argv[1:][0].split("_")
     else:
         ARGS = []
+
     if ARGS == []:
         for fr, st in product(FREQ_DICT, STATE_LIST):
             classif_cosp(st, fr)
     else:
         print(ARGS)
         classif_cosp(ARGS[0], ARGS[1])
-    print("total time lapsed : %s" % elapsed_time(TIMELAPSE_START, time()))
+    print("total time lapsed : %s" % (elapsed_time(TIMELAPSE_START, time())))

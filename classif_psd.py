@@ -17,6 +17,7 @@ from utils import (
     create_groups,
     prepare_data,
     classification,
+    proper_loadmat,
 )
 from params import (
     SAVE_PATH,
@@ -42,15 +43,6 @@ N_PERM = 999 if PERM else None
 N_BOOTSTRAPS = 1000 if BOOTSTRAP else 1
 
 SAVE_PATH /= NAME
-
-
-def proper_loadmat(file_path):
-    data = loadmat(file_path)
-    clean_data = {}
-    for key, value in data.items():
-        if not key.startswith("__"):
-            clean_data[key] = value.squeeze().tolist()
-    return clean_data
 
 
 def classif_psd(state, elec):
@@ -96,7 +88,6 @@ def classif_psd(state, elec):
             clf = LDA(solver=SOLVER)
             save = classification(clf, sl2go, data, labels, groups, N_PERM, n_jobs=-1)
 
-            print(save["acc_score"])
             if i == 0:
                 final_save = save
             elif BOOTSTRAP:
@@ -130,7 +121,7 @@ if __name__ == "__main__":
     if len(ARGS) > 2:
         ARGS = sys.argv[1:]
     elif len(ARGS) == 2:
-        ARGS = sys.argv[1][0].split("_")
+        ARGS = sys.argv[1:][0].split("_")
     else:
         ARGS = []
 

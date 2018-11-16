@@ -17,6 +17,15 @@ from path import Path as path
 from joblib import Parallel, delayed
 
 
+def proper_loadmat(file_path):
+    data = loadmat(file_path)
+    clean_data = {}
+    for key, value in data.items():
+        if not key.startswith("__"):
+            clean_data[key] = value.squeeze().tolist()
+    return clean_data
+
+
 def super_count(liste):
     counts = dict()
     for item in liste:
