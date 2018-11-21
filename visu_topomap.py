@@ -5,6 +5,7 @@ from scipy.stats import zscore, binom
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from joblib import Parallel, delayed
 from utils import compute_pval
 
 # from matplotlib import ticker
@@ -15,7 +16,8 @@ plt.switch_backend("agg")
 NAME = "psd"
 # NAME = "zscore_psd"
 # PREFIX = "bootstrapped_perm_subsamp_"
-PREFIX = "perm_"
+PREFIX = "bootstrapped_subsamp_"
+# PREFIX = "perm_"
 
 DATA_PATH = SAVE_PATH / NAME
 TTEST_RESULTS_PATH = DATA_PATH / "results"
@@ -27,17 +29,18 @@ SENSORS_POS = loadmat(POS_FILE)["Cor"]
 FREQS = ["Delta", "Theta", "Alpha", "Sigma", "Beta"]
 SUBSAMP = "subsamp" in PREFIX.split("_")
 BOOTSTRAPPED = "bootstrapped" in PREFIX.split("_")
+PERM = "perm" in PREFIX.split("_")
 WINDOW = 1000
 OVERLAP = 0
 PVAL = .001
-BINOM = False
+BINOM = not PERM
 MAXSTAT_ELEC = True
 info_data = pd.read_csv(SAVE_PATH / "info_data.csv")[STATE_LIST]
 N_TRIALS = info_data.min().min()
 TRIALS = list(INFO_DATA.iloc[36])
 
-for stage in STATE_LIST:
 
+def gen_figure(stage):
     k, j = 1, 1
     fig = plt.figure(figsize=(8, 10))
     for freq in FREQS:
@@ -52,30 +55,22 @@ for stage in STATE_LIST:
             )
             try:
                 results = loadmat(RESULTS_PATH / file_name)
-                # if SUBSAMP:
                 score_key = "acc"
                 pscores_key = "acc_pscores"
-                # else:
-                #     score_key = "score"
-                #     pscores_key = "pscore"
                 score = float(results[score_key].ravel().mean())
-                pscores = list(results[pscores_key].squeeze())
-                pscores_corrected = []
+                if PERM:
+                    pscores = list(results[pscores_key].squeeze())
                 if BOOTSTRAPPED:
-                    pscores_corrected = sorted(pscores)[-int(1 / PVAL) + 1 :]
                     n_rep = int(results["n_rep"])
-                    # for i in range(0, len(pscores), n_rep):
-                    #     best_ps = np.max(pscores[i : i + n_rep])
-                    #     pscores_corrected.append(best_ps)
-                else:
-                    pscores_corrected = pscores
             except:
                 score = .5
-                pscores_corrected = [.5] * 99
-                print(file_name)
+                pscores = [.5] * 99
+                n_rep = 0
+                print("Error with:", file_name)
 
             scores.append(score)
-            pscores_all_elec.append(pscores_corrected)
+            if PERM:
+                pscores_all_elec.append(pscores)
 
             file_name = NAME + "_{}_{}_{}_{}_{:.2f}.mat".format(
                 stage, freq, elec, WINDOW, OVERLAP
@@ -101,17 +96,18 @@ for stage in STATE_LIST:
             HR.append(np.mean(moy_PSD[:17]))
             LR.append(np.mean(moy_PSD[17:]))
 
-        pscores_all_elec = np.asarray(pscores_all_elec)
-        if MAXSTAT_ELEC:
-            pscores_all_elec = np.max(pscores_all_elec, axis=0)
-
-        pvalues = []
-        for i, score in enumerate(scores):
+        if PERM:
+            pscores_all_elec = np.asarray(pscores_all_elec)
             if MAXSTAT_ELEC:
-                pscores = pscores_all_elec
-            else:
-                pscores = pscores_all_elec[i]
-            pvalues.append(compute_pval(score, pscores))
+                pscores_all_elec = np.max(pscores_all_elec, axis=0)
+
+            pvalues = []
+            for i, score in enumerate(scores):
+                if MAXSTAT_ELEC:
+                    pscores = pscores_all_elec
+                else:
+                    pscores = pscores_all_elec[i]
+                pvalues.append(compute_pval(score, pscores))
 
         ttest = loadmat(TTEST_RESULTS_PATH / "ttest_perm_{}_{}.mat".format(stage, freq))
         tt_pvalues = ttest["p_values"].ravel()
@@ -119,7 +115,8 @@ for stage in STATE_LIST:
         HR = np.asarray(HR)
         LR = np.asarray(LR)
         DA = 100 * np.asarray(scores)
-        da_pvalues = np.asarray(pvalues)
+        if PERM:
+            da_pvalues = np.asarray(pvalues)
         # RPC = zscore((HR - LR) / LR)
         # HR = HR / max(abs(HR))
         # LR = LR / max(abs(LR))
@@ -217,3 +214,7 @@ for stage in STATE_LIST:
     file_name = "topomap_{}{}_{}_p{}".format(PREFIX, NAME, stage, str(PVAL)[2:])
     print(file_name)
     plt.savefig(SAVE_PATH / "../figures" / file_name, dpi=400)
+
+
+if __name__ == "__main__":
+    Parallel(n_jobs=-1)(delayed(gen_figure)(stage) for stage in STATE_LIST)
