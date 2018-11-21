@@ -5,6 +5,7 @@ from itertools import combinations, permutations
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
 from sklearn.base import clone
+from sklearn.model_selection import LeavePGroupsOut
 from sklearn.utils import indexable
 from sklearn.utils.validation import check_array, _num_samples
 from sklearn.metrics import accuracy_score, roc_auc_score
@@ -197,15 +198,6 @@ def compute_pval(score, perm_scores):
         if score <= psc:
             pvalue += 1 / n_perm
     return pvalue
-
-
-def gen_dif_index(groups, test_group):
-    """Generate an index to identify which group is in test_group."""
-    uniq_groups = list(set(test_group))
-    index = []
-    for group in uniq_groups:
-        index.append(np.where(groups == group)[0][0])
-    return index
 
 
 def is_strat(y, groups=None, test_group=None):
@@ -474,208 +466,39 @@ def is_signif(pvalue, p=0.05):
     return answer
 
 
-class BaseStratCrossValidator(with_metaclass(ABCMeta)):
-    """Base class for all cross-validators.
-
-    Implementations must define `_iter_test_masks` or `_iter_test_indices`.
-    """
-
-    def __init__(self):
-        # We need this for the build_repr to work properly in py2.7
-        # see #6304
-        pass
-
-    def split(self, X, y=None, groups=None):
-        """Generate indices to split data into training and test set.
-
-        Parameters
-        ----------
-        X : array-like, shape (n_samples, n_features)
-            Training data, where n_samples is the number of samples
-            and n_features is the number of features.
-        y : array-like, of length n_samples
-            The target variable for supervised learning problems.
-        groups : array-like, with shape (n_samples,), optional
-            Group labels for the samples used while splitting the dataset into
-            train/test set.
-        Returns
-        -------
-        train : ndarray
-            The training set indices for that split.
-        test : ndarray
-            The testing set indices for that split.
-        """
-        X, y, groups = indexable(X, y, groups)
-        indices = np.arange(_num_samples(X))
-        for test_index in self._iter_test_masks(X, y, groups):
-            train_index = indices[np.logical_not(test_index)]
-            test_index = indices[test_index]
-            if y[test_index[0]] != y[test_index[-1]]:
-                yield train_index, test_index
-
-    # Since subclasses must implement either _iter_test_masks or
-    # _iter_test_indices, neither can be abstract.
-    def _iter_test_masks(self, X=None, y=None, groups=None):
-        """Generates boolean masks corresponding to test sets.
-
-        By default, delegates to _iter_test_indices(X, y, groups)
-        """
-        for test_index in self._iter_test_indices(X, y, groups):
-            test_mask = np.zeros(_num_samples(X), dtype=np.bool)
-            test_mask[test_index] = True
-            yield test_mask
-
-    def _iter_test_indices(self, X=None, y=None, groups=None):
-        """Generates integer indices corresponding to test sets."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_n_splits(self, X=None, y=None, groups=None):
-        """Returns the number of splitting iterations in the cross-validator."""
-
-    def __repr__(self):
-        return _build_repr(self)
-
-
-class StratifiedLeavePGroupsOut(BaseStratCrossValidator):
-    """Leave P Group(s) Out cross-validator.
-
-    Only stratified for n_groups = 2 !!!!!
-    Provides train/test indices to split data according to a third-party
-    provided group. This group information can be used to encode arbitrary
-    domain specific stratifications of the samples as integers.
-    For instance the groups could be the year of collection of the samples
-    and thus allow for cross-validation against time-based splits.
-    The difference between LeavePGroupsOut and LeaveOneGroupOut is that
-    the former builds the test sets with all the samples assigned to
-    ``p`` different values of the groups while the latter uses samples
-    all assigned the same groups.
-    Read more in the :ref:`User Guide <cross_validation>`.
-    Parameters
-    ----------
-    n_groups : int
-        Number of groups (``p``) to leave out in the test split.
-    Examples
-    --------
-    >>> from sklearn.model_selection import LeavePGroupsOut
-    >>> X = np.array([[1, 2], [3, 4], [5, 6]])
-    >>> y = np.array([1, 2, 1])
-    >>> groups = np.array([1, 2, 3])
-    >>> lpgo = LeavePGroupsOut(n_groups=2)
-    >>> lpgo.get_n_splits(X, y, groups)
-    3
-    >>> print(lpgo)
-    LeavePGroupsOut(n_groups=2)
-    >>> for train_index, test_index in lpgo.split(X, y, groups):
-    ...    print("TRAIN:", train_index, "TEST:", test_index)
-    ...    X_train, X_test = X[train_index], X[test_index]
-    ...    y_train, y_test = y[train_index], y[test_index]
-    ...    print(X_train, X_test, y_train, y_test)
-    TRAIN: [2] TEST: [0 1]
-    [[5 6]] [[1 2]
-     [3 4]] [1] [1 2]
-    TRAIN: [1] TEST: [0 2]
-    [[3 4]] [[1 2]
-     [5 6]] [2] [1 1]
-    TRAIN: [0] TEST: [1 2]
-    [[1 2]] [[3 4]
-     [5 6]] [1] [2 1]
-    See also
-    --------
-    GroupKFold: K-fold iterator variant with non-overlapping groups.
-    """
-
-    def __init__(self, n_groups):
+class StratifiedShuffleGroupSplit:
+    def __init__(self, n_groups, n_iter=None):
+        if n_groups % 2 != 0:
+            raise Exception("Error: We need n_groups to be an even number")
+        n_each = int(n_groups / 2)
+        self.cv1 = LeavePGroupsOut(n_each)
+        self.cv2 = LeavePGroupsOut(n_each)
         self.n_groups = n_groups
+        self.n_iter = n_iter
+        self.counter = 0
 
-    def _iter_test_masks(self, X, y, groups):
+    def split(self, X, y, groups):
+        labels_list = list(set(y))
+        if len(labels_list) != 2:
+            raise Exception("Error: this cross-val only works for binary problems")
         if groups is None:
-            raise ValueError("The groups parameter should not be None")
-        groups = check_array(groups, copy=True, ensure_2d=False, dtype=None)
-        unique_groups, group_counts = np.unique(groups, return_counts=True)
-        if self.n_groups >= len(unique_groups):
-            raise ValueError(
-                "The groups parameter contains fewer than (or equal to) "
-                "n_groups (%d) numbers of unique groups (%s). LeavePGroupsOut "
-                "expects that at least n_groups + 1 (%d) unique groups be "
-                "present" % (self.n_groups, unique_groups, self.n_groups + 1)
-            )
-        # unique_groups = np.delete(unique_groups,
-        #                           np.where(group_counts < len(X)/(2*len(unique_groups))))
-        combi = combinations(range(len(unique_groups)), self.n_groups)
-        for indices in combi:
-            test_index = np.zeros(_num_samples(X), dtype=np.bool)
-            for l in unique_groups[np.array(indices)]:
-                test_index[groups == l] = True
+            raise Exception("Error: this function requires a groups parameter")
+        index1 = np.where(y == labels_list[0])[0]
+        index2 = np.where(y == labels_list[-1])[0]
+        labels1 = np.asarray(y)[index1]
+        labels2 = np.asarray(y)[index2]
+        groups1 = np.asarray(groups)[index1]
+        groups2 = np.asarray(groups)[index2]
+        for train1, test1 in self.cv1.split(index1, labels1, groups1):
+            for train2, test2 in self.cv2.split(index2, labels2, groups2):
+                if self.counter == self.n_iter:
+                    break
+                self.counter += 1
+                yield np.concatenate((index1[train1], index2[train2])), np.concatenate(
+                    (index1[test1], index2[test2])
+                )
 
-            if len(test_index) > len(X) / (2 * len(unique_groups)):
-                yield test_index
-
-    # Unused not working
-    def get_n_splits(self, X, y, groups):
-        """Returns the number of splitting iterations in the cross-validator.
-
-        Parameters
-        ----------
-        X : object
-            Always ignored, exists for compatibility.
-            ``np.zeros(n_samples)`` may be used as a placeholder.
-        y : object
-            Always ignored, exists for compatibility.
-            ``np.zeros(n_samples)`` may be used as a placeholder.
-        groups : array-like, with shape (n_samples,), optional
-            Group labels for the samples used while splitting the dataset into
-            train/test set.
-        Returns
-        -------
-        n_splits : int
-            Returns the number of splitting iterations in the cross-validator.
-        """
-        if groups is None:
-            raise ValueError("The groups parameter should not be None")
-        groups = check_array(groups, ensure_2d=False, dtype=None)
-        X, y, groups = indexable(X, y, groups)
-        return int(comb(len(np.unique(groups)), self.n_groups, exact=True))
-
-
-# Unused not working
-def _build_repr(self):
-    # XXX This is copied from BaseEstimator's get_params
-    cls = self.__class__
-    init = getattr(cls.__init__, "deprecated_original", cls.__init__)
-    # Ignore varargs, kw and default values and pop self
-    init_signature = signature(init)
-    # Consider the constructor parameters excluding 'self'
-    if init is object.__init__:
-        args = []
-    else:
-        args = sorted(
-            [
-                p.name
-                for p in init_signature.parameters.values()
-                if p.name != "self" and p.kind != p.VAR_KEYWORD
-            ]
+    def get_n_splits(self, data, labels, groups):
+        return self.cv1.get_n_splits(data, labels, groups) * self.cv2.get_n_splits(
+            data, labels, groups
         )
-    class_name = self.__class__.__name__
-    params = dict()
-    for key in args:
-        # We need deprecation warnings to always be on in order to
-        # catch deprecated param values.
-        # This is set in utils/__init__.py but it gets overwritten
-        # when running under python3 somehow.
-        warnings.simplefilter("always", DeprecationWarning)
-        try:
-            with warnings.catch_warnings(record=True) as w:
-                value = getattr(self, key, None)
-            if len(w) and w[0].category == DeprecationWarning:
-                # if the parameter is deprecated, don't show it
-                continue
-        finally:
-            warnings.filters.pop(0)
-        params[key] = value
-
-    return "%s(%s)" % (class_name, _pprint(params, offset=len(class_name)))
-
-
-def StratifiedLeave2GroupsOut():
-    return StratifiedLeavePGroupsOut(n_groups=2)
