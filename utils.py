@@ -72,12 +72,13 @@ def cross_val_scores(estimator, cv, X, y, groups=None, n_jobs=1):
         for train_index, test_index in cv.split(X=X, y=y, groups=groups)
     )
 
+    AUC = not X.shape[1] > 1 and cv.n_groups > 1
     accuracy, auc_list = [], []
     for test in results:
         y_pred = test[0]
         y_test = test[1]
         acc = accuracy_score(y_test, y_pred)
-        if not X.shape[1] > 1 and len(set(y)) > 1:
+        if AUC:
             auc = roc_auc_score(y_test, y_pred)
         else:
             auc = 0
