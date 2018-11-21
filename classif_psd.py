@@ -12,7 +12,7 @@ import numpy as np
 from scipy.io import savemat, loadmat
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from utils import (
-    StratifiedLeave2GroupsOut,
+    StratifiedShuffleGroupSplit,
     elapsed_time,
     create_groups,
     prepare_data,
@@ -95,7 +95,7 @@ def classif_psd(state, elec, n_jobs=-1):
                 data = prepare_data(data)
 
             data = np.array(data).reshape(len(data), 1)
-            sl2go = StratifiedLeave2GroupsOut()
+            sl2go = StratifiedShuffleGroupSplit(2)
             clf = LDA(solver=SOLVER)
             save = classification(
                 clf, sl2go, data, labels, groups, N_PERM, n_jobs=n_jobs
