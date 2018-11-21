@@ -281,6 +281,12 @@ def elapsed_time(t0, t1, formating=True):
 def prepare_data(dico, rm_outl=None, key="data", n_trials=None, random_state=None):
     data = dico[key].ravel()
     final_data = None
+    for submat in data:
+        if rm_outl is not None:
+            zs_sub = zscore(submat)
+            to_rm = np.where(abs(zs_sub) > rm_outl)[0]
+            submat = np.delete(submat, to_rm)
+
     if n_trials is not None:
         sizes = []
         for sub in data:
@@ -297,10 +303,6 @@ def prepare_data(dico, rm_outl=None, key="data", n_trials=None, random_state=Non
     for submat in data:
         if submat.shape[0] == 1:
             submat = submat.ravel()
-        if rm_outl is not None:
-            zs_sub = zscore(submat)
-            to_rm = np.where(abs(zs_sub) > rm_outl)[0]
-            submat = np.delete(submat, to_rm)
         if n_trials is not None:
             index = np.random.RandomState(random_state).choice(
                 range(len(submat)), n_trials, replace=False

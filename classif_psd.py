@@ -51,8 +51,8 @@ SAVE_PATH /= NAME
 def classif_psd(state, elec, n_jobs=-1):
     if SUBSAMPLE:
         info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
-        # n_trials = info_data.min().min()
-        n_trials = 30
+        n_trials = info_data.min().min()
+        # n_trials = 30
         n_subs = len(info_data) - 1
         groups = [i for i in range(n_subs) for _ in range(n_trials)]
         n_total = n_trials * n_subs
@@ -95,7 +95,7 @@ def classif_psd(state, elec, n_jobs=-1):
                 data = prepare_data(data)
 
             data = np.array(data).reshape(len(data), 1)
-            sl2go = StratifiedShuffleGroupSplit(2)
+            sl2go = StratifiedShuffleGroupSplit(4, 400)
             clf = LDA(solver=SOLVER)
             save = classification(
                 clf, sl2go, data, labels, groups, N_PERM, n_jobs=n_jobs
