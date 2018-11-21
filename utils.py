@@ -11,6 +11,7 @@ from sklearn.metrics import accuracy_score, roc_auc_score
 from sklearn.utils.fixes import signature, comb
 from scipy.io import loadmat, savemat
 from scipy.signal import welch
+from scipy.stats import zscore
 import numpy as np
 from numpy.random import permutation
 from path import Path as path
@@ -284,12 +285,29 @@ def elapsed_time(t0, t1, formating=True):
     return lapsed
 
 
-def prepare_data(dico, key="data", n_trials=None, random_state=None):
+def prepare_data(dico, rm_outl=None, key="data", n_trials=None, random_state=None):
     data = dico[key].ravel()
     final_data = None
+    if n_trials is not None:
+        sizes = []
+        for sub in data:
+            sizes.append(len(sub.ravel()))
+        n_sub_min = min(sizes)
+        if n_trials < n_sub_min:
+            print(
+                "can't take {} trials, will take the minimum amout {} instead".format(
+                    n_trials, n_sub_min
+                )
+            )
+            n_trials = n_sub_min
+
     for submat in data:
         if submat.shape[0] == 1:
             submat = submat.ravel()
+        if rm_outl is not None:
+            zs_sub = zscore(submat)
+            to_rm = np.where(abs(zs_sub) > rm_outl)[0]
+            submat = np.delete(submat, to_rm)
         if n_trials is not None:
             index = np.random.RandomState(random_state).choice(
                 range(len(submat)), n_trials, replace=False
@@ -297,6 +315,7 @@ def prepare_data(dico, key="data", n_trials=None, random_state=None):
             prep_submat = submat[index]
         else:
             prep_submat = submat
+
         final_data = (
             prep_submat
             if final_data is None

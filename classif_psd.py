@@ -51,7 +51,8 @@ SAVE_PATH /= NAME
 def classif_psd(state, elec, n_jobs=-1):
     if SUBSAMPLE:
         info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
-        n_trials = info_data.min().min()
+        # n_trials = info_data.min().min()
+        n_trials = 30
         n_subs = len(info_data) - 1
         groups = [i for i in range(n_subs) for _ in range(n_trials)]
         n_total = n_trials * n_subs
@@ -89,7 +90,7 @@ def classif_psd(state, elec, n_jobs=-1):
         for i in range(n_rep, N_BOOTSTRAPS):
             data = loadmat(data_file_path)
             if SUBSAMPLE or ADAPT:
-                data = prepare_data(data, n_trials=n_trials, random_state=i)
+                data = prepare_data(data, rm_outl=2, n_trials=n_trials, random_state=i)
             else:
                 data = prepare_data(data)
 
