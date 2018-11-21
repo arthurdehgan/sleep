@@ -74,7 +74,7 @@ def classif_psd(state, elec, n_jobs=-1):
             state, freq, elec, WINDOW, OVERLAP
         )
 
-        save_file_name = PREFIX + data_file_name
+        save_file_name = PREFIX + n_trials + "_" + data_file_name
 
         data_file_path = SAVE_PATH / data_file_name
 
