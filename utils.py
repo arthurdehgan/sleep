@@ -285,7 +285,7 @@ def prepare_data(dico, rm_outl=None, key="data", n_trials=None, random_state=Non
         for sub in data:
             sizes.append(len(sub.ravel()))
         n_sub_min = min(sizes)
-        if n_trials < n_sub_min:
+        if n_trials > n_sub_min:
             print(
                 "can't take {} trials, will take the minimum amout {} instead".format(
                     n_trials, n_sub_min
