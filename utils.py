@@ -278,14 +278,17 @@ def elapsed_time(t0, t1, formating=True):
     return lapsed
 
 
-def prepare_data(dico, rm_outl=None, key="data", n_trials=None, random_state=None):
+def rm_outliers(data, rm_outl=2):
+    zs_dat = zscore(data)
+    to_keep = np.where(abs(zs_dat) <= rm_outl)[0]
+    return data[to_keep]
+
+
+def prepare_data(dico, rm_outl=None, key="data", n_trials=None, random_state=0):
     data = dico[key].ravel()
     final_data = None
-    for submat in data:
-        if rm_outl is not None:
-            zs_sub = zscore(submat)
-            to_rm = np.where(abs(zs_sub) > rm_outl)[0]
-            submat = np.delete(submat, to_rm)
+    if rm_outl is not None:
+        data = rm_outliers(data, rm_outl)
 
     if n_trials is not None:
         sizes = []

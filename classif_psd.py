@@ -87,8 +87,8 @@ def classif_psd(state, elec, n_jobs=-1):
             n_rep = int(final_save["n_rep"])
         print("Starting from i={}".format(n_rep))
 
+        data = loadmat(data_file_path)
         for i in range(n_rep, N_BOOTSTRAPS):
-            data = loadmat(data_file_path)
             if SUBSAMPLE or ADAPT:
                 data = prepare_data(data, rm_outl=2, n_trials=n_trials, random_state=i)
             else:
@@ -144,7 +144,7 @@ if __name__ == "__main__":
         from joblib import delayed, Parallel
 
         Parallel(n_jobs=-1)(
-            delayed(classif_psd)(st, el, n_jobs=-1)
+            delayed(classif_psd)(st, el, n_jobs=1)
             for st, el in product(STATE_LIST, CHANNEL_NAMES)
         )
     else:
