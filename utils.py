@@ -1,15 +1,10 @@
 """Functions used to compute and analyse EEG/MEG data with pyriemann."""
 import time
 import functools
-from itertools import combinations, permutations
-from abc import ABCMeta, abstractmethod
-from six import with_metaclass
+from itertools import permutations
 from sklearn.base import clone
 from sklearn.model_selection import LeavePGroupsOut
-from sklearn.utils import indexable
-from sklearn.utils.validation import check_array, _num_samples
 from sklearn.metrics import accuracy_score, roc_auc_score
-from sklearn.utils.fixes import signature, comb
 from scipy.io import loadmat, savemat
 from scipy.signal import welch
 from scipy.stats import zscore
@@ -201,22 +196,6 @@ def compute_pval(score, perm_scores):
     return pvalue
 
 
-def is_strat(y, groups=None, test_group=None):
-    """Tell if a label vector is stratified."""
-    if groups is not None:
-        indx = gen_dif_index(groups, test_group)
-        check = len(indx)
-    else:
-        check = len(y)
-    labels = []
-    for i in indx:
-        labels.append(y[i])
-    labels = np.asarray(labels)
-    if len(np.where(labels == 1)[0]) == check / 2:
-        return True
-    return False
-
-
 def computePSD(signal, window, overlap, fmin, fmax, fs):
     """Compute PSD."""
     f, psd = welch(
@@ -284,16 +263,17 @@ def rm_outliers(data, rm_outl=2):
     return data[to_keep]
 
 
-def prepare_data(dico, rm_outl=None, key="data", n_trials=None, random_state=0):
+def prepare_data(
+    dico, labels=None, rm_outl=None, key="data", n_trials=None, random_state=0
+):
     data = dico[key].ravel()
+    data = np.asarray([sub.squeeze() for sub in data])
     final_data = None
     if rm_outl is not None:
-        data = rm_outliers(data, rm_outl)
+        data = np.asarray([rm_outliers(sub, rm_outl) for sub in data])
 
+    sizes = [len(sub) for sub in data]
     if n_trials is not None:
-        sizes = []
-        for sub in data:
-            sizes.append(len(sub.ravel()))
         n_sub_min = min(sizes)
         if n_trials > n_sub_min:
             print(
@@ -302,6 +282,18 @@ def prepare_data(dico, rm_outl=None, key="data", n_trials=None, random_state=0):
                 )
             )
             n_trials = n_sub_min
+
+        n_subs = len(data)
+        n_total = n_trials * n_subs
+        labels = [0 if i < n_total / 2 else 1 for i in range(n_total)]
+    elif labels is not None:
+        labels = [labels[i] * size for i, size in enumerate(sizes)]
+    else:
+        raise Exception(
+            "Error: either specify a number of trials and the "
+            + "labels will be generated or give the original labels"
+        )
+    labels, groups = create_groups(labels)
 
     for submat in data:
         if submat.shape[0] == 1:
@@ -320,7 +312,7 @@ def prepare_data(dico, rm_outl=None, key="data", n_trials=None, random_state=0):
             else np.concatenate((prep_submat, final_data))
         )
 
-    return np.asarray(final_data)
+    return np.asarray(final_data), labels, groups
 
 
 def load_hypno(sub):
@@ -489,12 +481,14 @@ class StratifiedShuffleGroupSplit:
             raise Exception("Error: this cross-val only works for binary problems")
         if groups is None:
             raise Exception("Error: this function requires a groups parameter")
+        y = np.asarray(y)
+        groups = np.asarray(groups)
         index1 = np.where(y == labels_list[0])[0]
         index2 = np.where(y == labels_list[-1])[0]
-        labels1 = np.asarray(y)[index1]
-        labels2 = np.asarray(y)[index2]
-        groups1 = np.asarray(groups)[index1]
-        groups2 = np.asarray(groups)[index2]
+        labels1 = y[index1]
+        labels2 = y[index2]
+        groups1 = groups[index1]
+        groups2 = groups[index2]
         for train1, test1 in self.cv1.split(index1, labels1, groups1):
             for train2, test2 in self.cv2.split(index2, labels2, groups2):
                 if self.counter == self.n_iter:
@@ -504,7 +498,19 @@ class StratifiedShuffleGroupSplit:
                     (index1[test1], index2[test2])
                 )
 
-    def get_n_splits(self, data, labels, groups):
-        return self.cv1.get_n_splits(data, labels, groups) * self.cv2.get_n_splits(
-            data, labels, groups
-        )
+    def get_n_splits(self, X, y, groups):
+        if self.n_iter is not None:
+            return self.n_iter
+        if y is None:
+            raise Exception("Error: y cannot be None")
+        if groups is None:
+            raise Exception("Error: groups cannot be None")
+        if len(y) != len(groups):
+            raise Exception("Error: y and groups need to have the same length")
+        labels_list = list(set(y))
+        y = np.asarray(y)
+        index1 = np.where(y == labels_list[0])[0]
+        index2 = np.where(y == labels_list[-1])[0]
+        return self.cv1.get_n_splits(
+            None, None, range(len(index1))
+        ) * self.cv2.get_n_splits(None, None, range(len(index2)))

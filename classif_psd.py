@@ -44,29 +44,20 @@ ADAPT = "adapt" in PREF_LIST
 PERM = "perm" in PREF_LIST
 N_PERM = 999 if PERM else None
 N_BOOTSTRAPS = 1000 if BOOTSTRAP else 1
+INIT_LABELS = [0] * 18 + [1] * 18
 
 SAVE_PATH /= NAME
 
 
 def classif_psd(state, elec, n_jobs=-1):
-    if SUBSAMPLE:
+    if SUBSAMPLE or ADAPT:
         info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
-        n_trials = info_data.min().min()
-        # n_trials = 30
-        n_subs = len(info_data) - 1
-        groups = [i for i in range(n_subs) for _ in range(n_trials)]
-        n_total = n_trials * n_subs
-        labels = [0 if i < n_total / 2 else 1 for i in range(n_total)]
-    elif ADAPT:
-        info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
-        n_trials = info_data.min()[state]
-        n_subs = len(info_data) - 1
-        groups = [i for i in range(n_subs) for _ in range(n_trials)]
-        n_total = n_trials * n_subs
-        labels = [0 if i < n_total / 2 else 1 for i in range(n_total)]
-    else:
-        labels = loadmat(LABEL_PATH / state + "_labels.mat")["y"].ravel()
-        labels, groups = create_groups(labels)
+        labels = INIT_LABELS
+        if SUBSAMPLE:
+            n_trials = info_data.min().min()
+            # n_trials = 30
+        elif ADAPT:
+            n_trials = info_data.min()[state]
 
     for freq in FREQ_DICT:
         print(state, elec, freq)
@@ -88,17 +79,21 @@ def classif_psd(state, elec, n_jobs=-1):
         print("Starting from i={}".format(n_rep))
 
         data = loadmat(data_file_path)
+        crossval = StratifiedShuffleGroupSplit(4, 400)
+        clf = LDA(solver=SOLVER)
+
         for i in range(n_rep, N_BOOTSTRAPS):
             if SUBSAMPLE or ADAPT:
-                data = prepare_data(data, rm_outl=2, n_trials=n_trials, random_state=i)
+                data, labels, groups = prepare_data(
+                    data, labels, rm_outl=2, n_trials=n_trials, random_state=i
+                )
             else:
-                data = prepare_data(data)
+                data, labels, groups = prepare_data(data, labels)
+            n_splits = crossval.get_n_splits(None, labels, groups)
 
             data = np.array(data).reshape(len(data), 1)
-            sl2go = StratifiedShuffleGroupSplit(4, 400)
-            clf = LDA(solver=SOLVER)
             save = classification(
-                clf, sl2go, data, labels, groups, N_PERM, n_jobs=n_jobs
+                clf, crossval, data, labels, groups, N_PERM, n_jobs=n_jobs
             )
 
             if i == 0:
@@ -117,17 +112,19 @@ def classif_psd(state, elec, n_jobs=-1):
             final_save["acc_score"] = np.mean(final_save["acc_score"])
         savemat(save_file_path, final_save)
 
+        standev = np.std(
+            [
+                np.mean(final_save["acc"].ravel()[i * n_splits : (i + 1) * n_splits])
+                for i in range(N_BOOTSTRAPS)
+            ]
+        )
         print(
             "accuracy for {} {} : {:.2f} (+/- {:.2f})".format(
-                state, elec, final_save["acc_score"], np.std(final_save["acc"])
+                state, elec, final_save["acc_score"], standev
             )
         )
         if PERM:
-            print(
-                "{} : {:.2f} significatif a p={:.4f}".format(
-                    freq, final_save["acc_score"], final_save["acc_pvalue"]
-                )
-            )
+            print("pval = {:.4f}".format(final_save["acc_pvalue"]))
 
 
 if __name__ == "__main__":

@@ -46,32 +46,23 @@ PERM = "perm" in PREFIX_LIST
 FULL_TRIAL = "ft" in NAME or "moy" in NAME.split("_")
 N_PERM = 999 if PERM else None
 N_BOOTSTRAPS = 1 if BOOTSTRAP else 1
+INIT_LABELS = [0] * 18 + [1] * 18
 
 SAVE_PATH /= NAME
 
 
 def classif_cosp(state, freq, n_jobs=-1):
     print(state, freq)
-    if FULL_TRIAL:
-        labels = np.concatenate((np.ones(18), np.zeros(18)))
+    if SUBSAMPLE or ADAPT:
+        info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
+        if SUBSAMPLE:
+            n_trials = info_data.min().min()
+            # n_trials = 30
+        elif ADAPT:
+            n_trials = info_data.min()[state]
+    elif FULL_TRIAL:
         groups = range(36)
-    elif SUBSAMPLE:
-        info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
-        n_trials = info_data.min().min()
-        n_subs = len(info_data) - 1
-        groups = [i for i in range(n_subs) for _ in range(n_trials)]
-        n_total = n_trials * n_subs
-        labels = [0 if i < n_total / 2 else 1 for i in range(n_total)]
-    elif ADAPT:
-        info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
-        n_trials = info_data.min()[state]
-        n_subs = len(info_data) - 1
-        groups = [i for i in range(n_subs) for _ in range(n_trials)]
-        n_total = n_trials * n_subs
-        labels = [0 if i < n_total / 2 else 1 for i in range(n_total)]
-    else:
-        labels = loadmat(LABEL_PATH / state + "_labels.mat")["y"].ravel()
-        labels, groups = create_groups(labels)
+    labels = INIT_LABELS
 
     file_path = (
         SAVE_PATH / "results" / PREFIX
@@ -90,25 +81,28 @@ def classif_cosp(state, freq, n_jobs=-1):
     data_file_path = SAVE_PATH / file_name
 
     data_og = loadmat(data_file_path)
+    if FULL_TRIAL:
+        crossval = SSS(9)
+    else:
+        crossval = StratifiedShuffleGroupSplit(2)
+    lda = LDA()
+    clf = TSclassifier(clf=lda)
+
     for i in range(n_rep, N_BOOTSTRAPS):
         if FULL_TRIAL:
             data = data_og["data"]
         elif SUBSAMPLE or ADAPT:
-            data = prepare_data(data_og, n_trials=n_trials, random_state=i)
+            data, labels, groups = prepare_data(
+                data_og, labels, n_trials=n_trials, random_state=i
+            )
         else:
-            data = prepare_data(data_og)
+            data, labels, groups = prepare_data(data_og, labels)
+        n_splits = crossval.get_n_splits(None, labels, groups)
 
-        if FULL_TRIAL:
-            crossval = SSS(9)
-        else:
-            crossval = StratifiedShuffleGroupSplit(2)
-        lda = LDA()
-        clf = TSclassifier(clf=lda)
         save = classification(
             clf, crossval, data, labels, groups, N_PERM, n_jobs=n_jobs
         )
 
-        print(save["acc_score"])
         if i == 0:
             final_save = save
         elif BOOTSTRAP:
@@ -116,19 +110,27 @@ def classif_cosp(state, freq, n_jobs=-1):
                 final_save[key] += value
 
         final_save["n_rep"] = i + 1
-        savemat(file_path, final_save)
+        if n_jobs == -1:
+            savemat(file_path, final_save)
 
     if BOOTSTRAP:
         final_save["auc_score"] = np.mean(final_save["auc_score"])
         final_save["acc_score"] = np.mean(final_save["acc_score"])
     savemat(file_path, final_save)
 
+    standev = np.std(
+        [
+            np.mean(final_save["acc"].ravel()[i * n_splits : (i + 1) * n_splits])
+            for i in range(N_BOOTSTRAPS)
+        ]
+    )
     print(
-        "accuracy for %s %s : %0.2f (+/- %0.2f)"
-        % (state, freq, np.mean(save["acc_score"]), np.std(save["acc"]))
+        "accuracy for {} {} : {:.2f} (+/- {:.2f})".format(
+            state, freq, final_save["acc_score"], standev
+        )
     )
     if PERM:
-        print("pval = {}".format(save["acc_pvalue"]))
+        print("pval = {}".format(final_save["acc_pvalue"]))
 
 
 if __name__ == "__main__":
