@@ -33,7 +33,7 @@ NAME = "psd"
 # NAME = "zscore_psd"
 # PREFIX = "perm_"
 # PREFIX = "bootstrapped_perm_subsamp_"
-PREFIX = "bootstrapped_subsamp_"
+PREFIX = "bootstrapped_subsamp_outl"
 # PREFIX = "bootstrapped_adapt_"
 SOLVER = "svd"  # 'svd' 'lsqr'
 
@@ -81,7 +81,7 @@ def classif_psd(state, elec, n_jobs=-1):
         print("Starting from i={}".format(n_rep))
 
         data = loadmat(data_file_path)
-        crossval = StratifiedShuffleGroupSplit(4, 400)
+        crossval = StratifiedShuffleGroupSplit(2)
         clf = LDA(solver=SOLVER)
 
         for i in range(n_rep, N_BOOTSTRAPS):
