@@ -33,7 +33,7 @@ NAME = "psd"
 # NAME = "zscore_psd"
 # PREFIX = "perm_"
 # PREFIX = "bootstrapped_perm_subsamp_"
-PREFIX = "bootstrapped_subsamp_outl"
+PREFIX = "bootstrapped_subsamp_outl_"
 # PREFIX = "bootstrapped_adapt_"
 SOLVER = "svd"  # 'svd' 'lsqr'
 
@@ -44,7 +44,6 @@ ADAPT = "adapt" in PREF_LIST
 PERM = "perm" in PREF_LIST
 N_PERM = 999 if PERM else None
 N_BOOTSTRAPS = 1000 if BOOTSTRAP else 1
-CHANGES = False
 INIT_LABELS = [0] * 18 + [1] * 18
 
 SAVE_PATH /= NAME
@@ -78,6 +77,7 @@ def classif_psd(state, elec, n_jobs=-1):
             final_save = proper_loadmat(save_file_path)
             n_rep = int(final_save["n_rep"])
             n_splits = int(final_save["n_splits"])
+            CHANGES = False
         print("Starting from i={}".format(n_rep))
 
         data = loadmat(data_file_path)
