@@ -168,6 +168,7 @@ def classification(estimator, cv, X, y, groups=None, perm=None, n_jobs=1):
         "auc_score": [auc_score],
         "acc": accuracies,
         "auc": aucs,
+        "n_splits": cv.get_n_splits(),
     }
     if perm is not None:
         acc_pscores, auc_pscores = permutation_test(clf, cv, X, y, groups, perm, n_jobs)

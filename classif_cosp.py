@@ -47,6 +47,7 @@ FULL_TRIAL = "ft" in NAME or "moy" in NAME.split("_")
 N_PERM = 999 if PERM else None
 N_BOOTSTRAPS = 1 if BOOTSTRAP else 1
 INIT_LABELS = [0] * 18 + [1] * 18
+CHANGES = False
 
 SAVE_PATH /= NAME
 
@@ -75,6 +76,7 @@ def classif_cosp(state, freq, n_jobs=-1):
     else:
         final_save = proper_loadmat(file_path)
         n_rep = int(final_save["n_rep"])
+        n_splits = int(final_save["n_splits"])
     print("Starting from i={}".format(n_rep))
 
     file_name = NAME + "_{}_{}_{}_{:.2f}.mat".format(state, freq, WINDOW, OVERLAP)
@@ -89,6 +91,7 @@ def classif_cosp(state, freq, n_jobs=-1):
     clf = TSclassifier(clf=lda)
 
     for i in range(n_rep, N_BOOTSTRAPS):
+        CHANGES = True
         if FULL_TRIAL:
             data = data_og["data"]
         elif SUBSAMPLE or ADAPT:
@@ -107,7 +110,8 @@ def classif_cosp(state, freq, n_jobs=-1):
             final_save = save
         elif BOOTSTRAP:
             for key, value in save.items():
-                final_save[key] += value
+                if key != "n_splits":
+                    final_save[key] += value
 
         final_save["n_rep"] = i + 1
         if n_jobs == -1:
@@ -116,7 +120,8 @@ def classif_cosp(state, freq, n_jobs=-1):
     if BOOTSTRAP:
         final_save["auc_score"] = np.mean(final_save["auc_score"])
         final_save["acc_score"] = np.mean(final_save["acc_score"])
-    savemat(file_path, final_save)
+    if CHANGES:
+        savemat(file_path, final_save)
 
     standev = np.std(
         [

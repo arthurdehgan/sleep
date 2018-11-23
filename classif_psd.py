@@ -33,7 +33,7 @@ NAME = "psd"
 # NAME = "zscore_psd"
 # PREFIX = "perm_"
 # PREFIX = "bootstrapped_perm_subsamp_"
-PREFIX = "bootstrapped_subsamp_outl"
+PREFIX = "bootstrapped_subsamp_"
 # PREFIX = "bootstrapped_adapt_"
 SOLVER = "svd"  # 'svd' 'lsqr'
 
@@ -44,6 +44,7 @@ ADAPT = "adapt" in PREF_LIST
 PERM = "perm" in PREF_LIST
 N_PERM = 999 if PERM else None
 N_BOOTSTRAPS = 1000 if BOOTSTRAP else 1
+CHANGES = False
 INIT_LABELS = [0] * 18 + [1] * 18
 
 SAVE_PATH /= NAME
@@ -65,7 +66,7 @@ def classif_psd(state, elec, n_jobs=-1):
             state, freq, elec, WINDOW, OVERLAP
         )
 
-        save_file_name = PREFIX + str(n_trials) + "_" + data_file_name
+        save_file_name = PREFIX + data_file_name
 
         data_file_path = SAVE_PATH / data_file_name
 
@@ -76,6 +77,7 @@ def classif_psd(state, elec, n_jobs=-1):
         else:
             final_save = proper_loadmat(save_file_path)
             n_rep = int(final_save["n_rep"])
+            n_splits = int(final_save["n_splits"])
         print("Starting from i={}".format(n_rep))
 
         data = loadmat(data_file_path)
@@ -83,6 +85,7 @@ def classif_psd(state, elec, n_jobs=-1):
         clf = LDA(solver=SOLVER)
 
         for i in range(n_rep, N_BOOTSTRAPS):
+            CHANGES = True
             if SUBSAMPLE or ADAPT:
                 data, labels, groups = prepare_data(
                     data, labels, rm_outl=2, n_trials=n_trials, random_state=i
@@ -100,7 +103,8 @@ def classif_psd(state, elec, n_jobs=-1):
                 final_save = save
             elif BOOTSTRAP:
                 for key, value in save.items():
-                    final_save[key] += value
+                    if key != "n_splits":
+                        final_save[key] += value
 
             final_save["n_rep"] = i + 1
 
@@ -110,7 +114,8 @@ def classif_psd(state, elec, n_jobs=-1):
         if BOOTSTRAP:
             final_save["auc_score"] = np.mean(final_save["auc_score"])
             final_save["acc_score"] = np.mean(final_save["acc_score"])
-        savemat(save_file_path, final_save)
+        if CHANGES:
+            savemat(save_file_path, final_save)
 
         standev = np.std(
             [
