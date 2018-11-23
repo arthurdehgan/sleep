@@ -114,7 +114,7 @@ def classif_psd(state, elec, n_jobs=-1):
 
         standev = np.std(
             [
-                np.mean(final_save["acc"].ravel()[i * n_splits : (i + 1) * n_splits])
+                np.mean(final_save["acc"][i * n_splits : (i + 1) * n_splits])
                 for i in range(N_BOOTSTRAPS)
             ]
         )
