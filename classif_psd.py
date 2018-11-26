@@ -80,7 +80,7 @@ def classif_psd(state, elec, n_jobs=-1):
             CHANGES = False
         print("Starting from i={}".format(n_rep))
 
-        data = loadmat(data_file_path)
+        og_data = loadmat(data_file_path)
         crossval = StratifiedShuffleGroupSplit(2)
         clf = LDA(solver=SOLVER)
 
@@ -88,10 +88,10 @@ def classif_psd(state, elec, n_jobs=-1):
             CHANGES = True
             if SUBSAMPLE or ADAPT:
                 data, labels, groups = prepare_data(
-                    data, labels, rm_outl=2, n_trials=n_trials, random_state=i
+                    og_data, labels, rm_outl=2, n_trials=n_trials, random_state=i
                 )
             else:
-                data, labels, groups = prepare_data(data, labels)
+                data, labels, groups = prepare_data(og_data, labels)
             n_splits = crossval.get_n_splits(None, labels, groups)
 
             data = np.array(data).reshape(len(data), 1)
