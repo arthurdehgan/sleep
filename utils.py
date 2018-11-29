@@ -284,11 +284,9 @@ def prepare_data(
             )
             n_trials = n_sub_min
 
-        n_subs = len(data)
-        n_total = n_trials * n_subs
-        labels = [0 if i < n_total / 2 else 1 for i in range(n_total)]
+        labels = np.asarray([[lab] * n_trials for lab in labels])
     elif labels is not None:
-        labels = [labels[i] * size for i, size in enumerate(sizes)]
+        labels = np.asarray([labels[i] * size for i, size in enumerate(sizes)])
     else:
         raise Exception(
             "Error: either specify a number of trials and the "
@@ -513,5 +511,5 @@ class StratifiedShuffleGroupSplit:
         index1 = np.where(y == labels_list[0])[0]
         index2 = np.where(y == labels_list[-1])[0]
         return self.cv1.get_n_splits(
-            None, None, range(len(index1))
-        ) * self.cv2.get_n_splits(None, None, range(len(index2)))
+            None, None, groups[index1]
+        ) * self.cv2.get_n_splits(None, None, groups[index2])
