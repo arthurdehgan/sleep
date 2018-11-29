@@ -45,7 +45,7 @@ ADAPT = "adapt" in PREFIX_LIST
 PERM = "perm" in PREFIX_LIST
 FULL_TRIAL = "ft" in NAME or "moy" in NAME.split("_")
 N_PERM = 999 if PERM else None
-N_BOOTSTRAPS = 1 if BOOTSTRAP else 1
+N_BOOTSTRAPS = 1000 if BOOTSTRAP else 1
 INIT_LABELS = [0] * 18 + [1] * 18
 CHANGES = False
 
