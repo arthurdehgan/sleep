@@ -52,12 +52,12 @@ SAVE_PATH /= NAME
 def classif_psd(state, elec, n_jobs=-1):
     if SUBSAMPLE or ADAPT:
         info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
-        labels = INIT_LABELS
         if SUBSAMPLE:
             n_trials = info_data.min().min()
             # n_trials = 30
         elif ADAPT:
             n_trials = info_data.min()[state]
+    labels_og = INIT_LABELS
 
     for freq in FREQ_DICT:
         print(state, elec, freq)
@@ -88,13 +88,13 @@ def classif_psd(state, elec, n_jobs=-1):
             CHANGES = True
             if SUBSAMPLE or ADAPT:
                 data, labels, groups = prepare_data(
-                    og_data, labels, rm_outl=2, n_trials=n_trials, random_state=i
+                    og_data, labels_og, rm_outl=2, n_trials=n_trials, random_state=i
                 )
             else:
-                data, labels, groups = prepare_data(og_data, labels)
+                data, labels, groups = prepare_data(og_data, labels_og)
             n_splits = crossval.get_n_splits(None, labels, groups)
 
-            data = np.array(data).reshape(len(data), 1)
+            data = np.array(data).reshape(-1, 1)
             save = classification(
                 clf, crossval, data, labels, groups, N_PERM, n_jobs=n_jobs
             )

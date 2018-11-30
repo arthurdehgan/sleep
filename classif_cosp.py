@@ -63,7 +63,7 @@ def classif_cosp(state, freq, n_jobs=-1):
             n_trials = info_data.min()[state]
     elif FULL_TRIAL:
         groups = range(36)
-    labels = INIT_LABELS
+    labels_og = INIT_LABELS
 
     file_path = (
         SAVE_PATH / "results" / PREFIX
@@ -96,10 +96,10 @@ def classif_cosp(state, freq, n_jobs=-1):
             data = data_og["data"]
         elif SUBSAMPLE or ADAPT:
             data, labels, groups = prepare_data(
-                data_og, labels, n_trials=n_trials, random_state=i
+                data_og, labels_og, n_trials=n_trials, random_state=i
             )
         else:
-            data, labels, groups = prepare_data(data_og, labels)
+            data, labels, groups = prepare_data(data_og, labels_og)
         n_splits = crossval.get_n_splits(None, labels, groups)
 
         print(data.shape)
