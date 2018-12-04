@@ -99,7 +99,8 @@ def permutation_test(estimator, cv, X, y, groups=None, n_perm=0, n_jobs=1):
         perm_index = permutation(len(y))
         clf = clone(estimator)
         y_perm = y[perm_index]
-        perm_acc, perm_auc = cross_val_scores(clf, cv, X, y_perm, groups, n_jobs)
+        groups_perm = groups[perm_index]
+        perm_acc, perm_auc = cross_val_scores(clf, cv, X, y_perm, groups_perm, n_jobs)
         acc_pscores.append(np.mean(perm_acc))
         auc_pscores.append(np.mean(perm_auc))
 
