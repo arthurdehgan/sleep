@@ -25,7 +25,8 @@ from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW, OVERLAP, LABEL_PATH
 # PREFIX = "perm_"
 # PREFIX = "classif_"
 # PREFIX = "reduced_classif_"
-PREFIX = "bootstrapped_subsamp_"
+# PREFIX = "bootstrapped_subsamp_"
+PREFIX = "perm_subsamp_"
 NAME = "cosp"
 # NAME = "cosp"
 # NAME = 'ft_cosp'
@@ -117,9 +118,8 @@ def classif_cosp(state, freq, n_jobs=-1):
         if n_jobs == -1:
             savemat(file_path, final_save)
 
-    if BOOTSTRAP:
-        final_save["auc_score"] = np.mean(final_save["auc_score"])
-        final_save["acc_score"] = np.mean(final_save["acc_score"])
+    final_save["auc_score"] = np.mean(final_save["auc_score"])
+    final_save["acc_score"] = np.mean(final_save["acc_score"])
     if CHANGES:
         savemat(file_path, final_save)
 
