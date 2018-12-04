@@ -12,7 +12,7 @@ from scipy.io import savemat, loadmat
 # from sklearn.model_selection import train_test_split
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from mlxtend.feature_selection import ExhaustiveFeatureSelector as EFS
-from utils import StratifiedLeave2GroupsOut, elapsed_time, compute_pval, create_groups
+from utils import StratifiedShuffleGroupSplit, elapsed_time, compute_pval, create_groups
 from params import SAVE_PATH, CHANNEL_NAMES, WINDOW, OVERLAP, STATE_LIST, FREQ_DICT
 
 N_PERM = 1000
@@ -43,7 +43,7 @@ def main(state, elec):
     )
     if not results_file_path.isfile():
         for freq in FREQS:
-            data_file_path = SAVE_PATH / "PSD_{}_{}_{}_{}_{:.2f}.mat".format(
+            data_file_path = SAVE_PATH / "psd_{}_{}_{}_{}_{:.2f}.mat".format(
                 state, freq, elec, WINDOW, OVERLAP
             )
 
@@ -59,7 +59,7 @@ def main(state, elec):
         lil_labels = [0] * 18 + [1] * 18
         lil_labels = np.asarray(lil_labels)
         lil_groups = list(range(36))
-        sl2go = StratifiedLeave2GroupsOut()
+        sl2go = StratifiedShuffleGroupSplit(2)
 
         best_freqs = []
         pvalues, pscores = [], []
@@ -75,7 +75,7 @@ def main(state, elec):
             y_train, groups = create_groups(y_train)
             x_train = np.concatenate(x_train[:], axis=0)
 
-            nested_sl2go = StratifiedLeave2GroupsOut()
+            nested_sl2go = StratifiedShuffleGroupSplit(2)
             clf = LDA()
             f_select = EFS(
                 estimator=clf,
@@ -129,7 +129,8 @@ def main(state, elec):
 if __name__ == "__main__":
     T0 = time()
 
-    for state, elec in product(STATE_LIST, CHANNEL_NAMES):
-        main(state, elec)
+    # for state, elec in product(STATE_LIST, CHANNEL_NAMES):
+    #     main(state, elec)
+    main("S2", "F4")
 
     print("total time lapsed : {}".format(elapsed_time(T0, time())))
