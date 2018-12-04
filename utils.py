@@ -2,7 +2,7 @@
 import time
 import functools
 from itertools import permutations
-from sklearn.base import clone
+from sklearn.base import clone, BaseEstimator
 from sklearn.model_selection import LeavePGroupsOut
 from sklearn.metrics import accuracy_score, roc_auc_score
 from scipy.io import loadmat, savemat
@@ -62,9 +62,10 @@ def cross_val_scores(estimator, cv, X, y, groups=None, n_jobs=1):
     To use instead of sklearn cross_val_score if you want both roc_auc and
     acc in one go."""
     clf = clone(estimator)
+    crossv = clone(cv)
     results = Parallel(n_jobs=n_jobs)(
         delayed(_cross_val)(train_index, test_index, clf, X, y)
-        for train_index, test_index in cv.split(X=X, y=y, groups=groups)
+        for train_index, test_index in crossv.split(X=X, y=y, groups=groups)
     )
 
     AUC = not X.shape[1] > 1 and cv.n_groups > 1
@@ -190,11 +191,13 @@ def classification(estimator, cv, X, y, groups=None, perm=None, n_jobs=1):
 
 def compute_pval(score, perm_scores):
     """computes pvalue of an item in a distribution)"""
-    n_perm = len(perm_scores) + 1
-    pvalue = 0
-    for psc in perm_scores:
-        if score <= psc:
-            pvalue += 1 / n_perm
+    n_perm = len(perm_scores)
+    pvalue = (np.sum(perm_scores >= score) + 1.0) / (n_perm + 1)
+    # n_perm = len(perm_scores) + 1
+    # pvalue = 0
+    # for psc in perm_scores:
+    #     if score <= psc:
+    #         pvalue += 1 / n_perm
     return pvalue
 
 
@@ -464,7 +467,7 @@ def is_signif(pvalue, p=0.05):
     return answer
 
 
-class StratifiedShuffleGroupSplit:
+class StratifiedShuffleGroupSplit(BaseEstimator):
     def __init__(self, n_groups, n_iter=None):
         if n_groups % 2 != 0:
             raise Exception("Error: We need n_groups to be an even number")

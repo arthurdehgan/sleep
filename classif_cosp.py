@@ -54,6 +54,7 @@ SAVE_PATH /= NAME
 
 
 def classif_cosp(state, freq, n_jobs=-1):
+    global CHANGES
     print(state, freq)
     if SUBSAMPLE or ADAPT:
         info_data = pd.read_csv(SAVE_PATH.parent / "info_data.csv")[STATE_LIST]
@@ -87,7 +88,7 @@ def classif_cosp(state, freq, n_jobs=-1):
     if FULL_TRIAL:
         crossval = SSS(9)
     else:
-        crossval = StratifiedShuffleGroupSplit(2, 1)
+        crossval = StratifiedShuffleGroupSplit(2)
     lda = LDA()
     clf = TSclassifier(clf=lda)
 
@@ -118,22 +119,23 @@ def classif_cosp(state, freq, n_jobs=-1):
         if n_jobs == -1:
             savemat(file_path, final_save)
 
-    final_save["auc_score"] = np.mean(final_save["auc_score"])
+    final_save["auc_score"] = np.mean(final_save.get("auc_score", 0))
     final_save["acc_score"] = np.mean(final_save["acc_score"])
     if CHANGES:
         savemat(file_path, final_save)
 
-    standev = np.std(
-        [
-            np.mean(final_save["acc"][i * n_splits : (i + 1) * n_splits])
-            for i in range(N_BOOTSTRAPS)
-        ]
+    to_print = "accuracy for {} {} : {:.2f}".format(
+        state, freq, final_save["acc_score"]
     )
-    print(
-        "accuracy for {} {} : {:.2f} (+/- {:.2f})".format(
-            state, freq, final_save["acc_score"], standev
+    if BOOTSTRAP:
+        standev = np.std(
+            [
+                np.mean(final_save["acc"][i * n_splits : (i + 1) * n_splits])
+                for i in range(N_BOOTSTRAPS)
+            ]
         )
-    )
+        to_print.append(" (+/- {:.2f})".format(standev))
+    print(to_print)
     if PERM:
         print("pval = {}".format(final_save["acc_pvalue"]))
 
