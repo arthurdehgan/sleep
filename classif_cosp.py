@@ -86,7 +86,7 @@ def classif_cosp(state, freq, n_jobs=-1):
     if FULL_TRIAL:
         crossval = SSS(9)
     else:
-        crossval = StratifiedShuffleGroupSplit(2)
+        crossval = StratifiedShuffleGroupSplit(2, 1)
     lda = LDA()
     clf = TSclassifier(clf=lda)
 
@@ -102,7 +102,6 @@ def classif_cosp(state, freq, n_jobs=-1):
             data, labels, groups = prepare_data(data_og, labels_og)
         n_splits = crossval.get_n_splits(None, labels, groups)
 
-        print(data.shape)
         save = classification(
             clf, crossval, data, labels, groups, N_PERM, n_jobs=n_jobs
         )
