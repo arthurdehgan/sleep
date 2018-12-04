@@ -7,20 +7,13 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from utils import super_count
-from params import SAVE_PATH, STATE_LIST, CHANNEL_NAMES
+from params import SAVE_PATH, STATE_LIST, CHANNEL_NAMES, REGIONS
 
 plt.switch_backend("agg")
 
 DATA_PATH = SAVE_PATH / "psd"
 RESULTS_PATH = DATA_PATH / "results/"
 FREQS = ["Delta", "Theta", "Alpha", "Sigma", "Beta"]
-REGIONS = {
-    "Prefrontal": ["Fp1", "Fp2"],
-    "Fronto-Central": ["Cz", "C3", "C4", "FC1", "FC2", "F3", "F4", "Fz"],
-    "Temporal": ["T3", "T4"],
-    "Centro-Parietal": ["CP1", "CP2", "P4", "P3", "Pz"],
-    "Occipital": ["O1", "O2"],
-}
 GRID_SIZE = (6, 4)
 
 plt.figure(figsize=(8, 10))
