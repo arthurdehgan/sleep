@@ -269,10 +269,8 @@ def rm_outliers(data, rm_outl=2):
 
 
 def prepare_data(
-    dico, labels=None, rm_outl=None, key="data", n_trials=None, random_state=0
+    data, labels=None, rm_outl=None, key="data", n_trials=None, random_state=0
 ):
-    data = dico[key].ravel()
-    data = np.asarray([sub.squeeze() for sub in data])
     final_data = None
     if rm_outl is not None:
         data = np.asarray([rm_outliers(sub, rm_outl) for sub in data])
@@ -314,8 +312,57 @@ def prepare_data(
             if final_data is None
             else np.concatenate((prep_submat, final_data))
         )
-
     return np.asarray(final_data), labels, groups
+
+
+# def prepare_data(
+#     dico, labels=None, rm_outl=None, key="data", n_trials=None, random_state=0
+# ):
+#     data = dico[key].ravel()
+#     data = np.asarray([sub.squeeze() for sub in data])
+#     final_data = None
+#     if rm_outl is not None:
+#         data = np.asarray([rm_outliers(sub, rm_outl) for sub in data])
+#
+#     sizes = [len(sub) for sub in data]
+#     if n_trials is not None:
+#         n_sub_min = min(sizes)
+#         if n_trials > n_sub_min:
+#             print(
+#                 "can't take {} trials, will take the minimum amout {} instead".format(
+#                     n_trials, n_sub_min
+#                 )
+#             )
+#             n_trials = n_sub_min
+#
+#         labels = np.asarray([[lab] * n_trials for lab in labels])
+#     elif labels is not None:
+#         labels = np.asarray([labels[i] * size for i, size in enumerate(sizes)])
+#     else:
+#         raise Exception(
+#             "Error: either specify a number of trials and the "
+#             + "labels will be generated or give the original labels"
+#         )
+#     labels, groups = create_groups(labels)
+#
+#     for submat in data:
+#         if submat.shape[0] == 1:
+#             submat = submat.ravel()
+#         if n_trials is not None:
+#             index = np.random.RandomState(random_state).choice(
+#                 range(len(submat)), n_trials, replace=False
+#             )
+#             prep_submat = submat[index]
+#         else:
+#             prep_submat = submat
+#
+#         final_data = (
+#             prep_submat
+#             if final_data is None
+#             else np.concatenate((prep_submat, final_data))
+#         )
+#
+#     return np.asarray(final_data), labels, groups
 
 
 def load_hypno(sub):
