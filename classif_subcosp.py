@@ -20,8 +20,6 @@ from utils import (
 )
 from params import SAVE_PATH, FREQ_DICT, STATE_LIST, WINDOW, OVERLAP, CHANNEL_NAMES
 
-STATE_LIST = ["S2", "SWS"]
-
 PREFIX = "bootstrapped_subsamp_"
 NAME = "cosp"
 
