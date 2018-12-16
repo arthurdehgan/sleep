@@ -129,7 +129,7 @@ if __name__ == "__main__":
     if len(ARGS) > 2:
         ARGS = sys.argv[1:]
     elif len(ARGS) == 2:
-        ARGS = sys.argv[1:][0].split("_")
+        ARGS = sys.argv[1:][0].split(":")
     else:
         ARGS = []
 
