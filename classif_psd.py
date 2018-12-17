@@ -126,7 +126,7 @@ def classif_psd(state, elec, n_jobs=-1):
         else:
             final_save = proper_loadmat(save_file_path)
             n_rep = int(final_save["n_rep"])
-            n_splits = int(final_save["n_splits"])
+            # n_splits = int(final_save["n_splits"])
             CHANGES = False
         print("Starting from i={}".format(n_rep))
 
@@ -142,19 +142,20 @@ def classif_psd(state, elec, n_jobs=-1):
                 )
             else:
                 data, labels, groups = prepare_data(og_data, labels_og)
-            n_splits = crossval.get_n_splits(None, labels, groups)
+            # n_splits = crossval.get_n_splits(None, labels, groups)
 
             data = np.array(data).reshape(-1, 1)
             save = classification(
                 clf, crossval, data, labels, groups, N_PERM, n_jobs=n_jobs
             )
 
+            # save["n_splits"] = n_splits
             if i == 0:
                 final_save = save
             elif BOOTSTRAP:
                 for key, value in save.items():
-                    if key != "n_splits":
-                        final_save[key] += value
+                    # if key != "n_splits":
+                    final_save[key] += value
 
             final_save["n_rep"] = i + 1
 
@@ -169,8 +170,8 @@ def classif_psd(state, elec, n_jobs=-1):
 
         standev = np.std(
             [
-                np.mean(final_save["acc"][i * n_splits : (i + 1) * n_splits])
-                for i in range(N_BOOTSTRAPS)
+                np.mean(final_save["acc"][i : i + N_BOOTSTRAPS])
+                for i in range(0, len(final_save["acc"]), N_BOOTSTRAPS)
             ]
         )
         print(
