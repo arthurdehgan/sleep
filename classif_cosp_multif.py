@@ -138,7 +138,7 @@ def classif_cosp(state, n_jobs=-1):
                 for i in range(N_BOOTSTRAPS)
             ]
         )
-        to_print.append(" (+/- {:.2f})".format(standev))
+        to_print += " (+/- {:.2f})".format(standev)
     print(to_print)
     if PERM:
         print("pval = {}".format(final_save["acc_pvalue"]))
