@@ -1,10 +1,5 @@
 """Generate topomaps"""
-from collections import OrderedDict
-from mne.viz import plot_topomap
 from scipy.io import loadmat
-from scipy.stats import zscore, binom
-import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 from utils import super_count
 from params import SAVE_PATH, STATE_LIST, CHANNEL_NAMES, REGIONS
@@ -20,7 +15,7 @@ plt.figure(figsize=(8, 10))
 for j, stage in enumerate(STATE_LIST):
     counts, all_count = {}, {}
     for elec in CHANNEL_NAMES:
-        file_name = "EFS_NoGamma_{}_{}_1000_0.00.mat".format(stage, elec)
+        file_name = "EFS_{}_{}_1000_0.00.mat".format(stage, elec)
         freqs = loadmat(RESULTS_PATH / file_name)["freqs"].ravel()
         count = super_count(
             [freq.strip().capitalize() for sub in freqs for freq in sub]
@@ -48,7 +43,7 @@ for j, stage in enumerate(STATE_LIST):
             plt.ylabel(region)
         i += 1
 
-file_name = "EFS_piechart"
+FILE_NAME = "EFS_piechart"
 print(file_name)
 plt.legend(
     FREQS,
@@ -59,4 +54,4 @@ plt.legend(
     ncol=len(FREQS),
 )
 plt.tight_layout()
-plt.savefig(SAVE_PATH / "../figures" / file_name, dpi=200)
+plt.savefig(SAVE_PATH.parent / "figures" / FILE_NAME, dpi=300)
