@@ -9,7 +9,7 @@ from params import STATE_LIST, SAVE_PATH, CHANNEL_NAMES, SUBJECT_LIST
 FIG_PATH = SAVE_PATH.parent / "figures"
 COSP_PATH = SAVE_PATH / "cosp"
 COV_PATH = SAVE_PATH / "cov"
-PSD_PATH = SAVE_PATH / "psd"
+PSD_PATH = SAVE_PATH / "psd/per_bin"
 
 HR_LABELS = ("HR", "HR mean")
 LR_LABELS = ("LR", "LR mean")
@@ -86,56 +86,40 @@ ldr = all_subs[:18]
 ldr = [[compute(a, i) for a in dat] for i, dat in enumerate(ldr)]
 
 
-fig, axarr = plt.subplots(3, 2, figsize=(12, 16))
+fig = plt.figure(figsize=(25, 10))
+ax1 = plt.subplot2grid((2, 5), (0, 0), colspan=2, rowspan=2)
+ax2 = plt.subplot2grid((2, 5), (0, 2))
+ax3 = plt.subplot2grid((2, 5), (0, 3))
+ax4 = plt.subplot2grid((2, 5), (1, 2))
+ax5 = plt.subplot2grid((2, 5), (1, 3))
+ax6 = plt.subplot2grid((2, 5), (1, 4))
 
-fig0 = plt.subplot(3, 2, 1)
 for i in range(len(hdr)):
-    plt.plot(
+    ax1.plot(
         range(1, 46), ldr[i], color="skyblue", label="_nolegend_" if i > 0 else "LR"
     )
-plt.plot(range(1, 46), np.mean(ldr, axis=0), color="blue", label="LR mean")
-plt.legend(fontsize=FONTSIZE - 2, frameon=False)
-plt.ylim(-6.3, 5)
-plt.xlim(1, 45)
-plt.ylabel("Power Spectral Density (dB/Hz)", fontsize=FONTSIZE)
-plt.xlabel("Frequency (Hz)", fontsize=FONTSIZE - 2)
-fig0.spines["top"].set_visible(False)
-fig0.spines["right"].set_visible(False)
-
-fig1 = plt.subplot(3, 2, 2)
-for i in range(len(hdr)):
-    plt.plot(
+    ax1.plot(
         range(1, 46), hdr[i], color="peachpuff", label="_nolegend_" if i > 0 else "HR"
     )
-plt.plot(range(1, 46), np.mean(hdr, axis=0), color="red", label="HR mean")
-plt.legend(fontsize=FONTSIZE - 2, frameon=False)
-plt.ylim(-6.3, 5)
-plt.xlim(1, 45)
-plt.xlabel("Frequency (Hz)", fontsize=FONTSIZE - 2)
-fig1.spines["top"].set_visible(False)
-fig1.spines["right"].set_visible(False)
+ax1.plot(range(1, 46), np.mean(hdr, axis=0), color="red", label="HR mean")
+ax1.plot(range(1, 46), np.mean(ldr, axis=0), color="blue", label="LR mean")
+ax1.legend(fontsize=FONTSIZE - 2, frameon=False)
+ax1.set_xlabel("Frequency (Hz)", fontsize=FONTSIZE - 2)
+ax1.set_ylabel("Power Spectral Density (dB/Hz)", fontsize=FONTSIZE)
+ax1.spines["top"].set_visible(False)
+ax1.spines["right"].set_visible(False)
+do_matrix(ax2, LR_COV)
+ax2.set_ylabel("Covariance", fontsize=FONTSIZE)
+do_matrix(ax3, HR_COV)
+do_matrix(ax4, LR_COSP)
+ax4.set_ylabel("Cospectrum", fontsize=FONTSIZE)
+ax4.set_xlabel("Low Recallers", fontsize=FONTSIZE)
+mat = do_matrix(ax5, HR_COSP)
+ax5.set_xlabel("High Recallers", fontsize=FONTSIZE)
 
 TICKS = [0, .2, .4, .6, .8, 1]
 
-fig3 = plt.subplot(3, 2, 3)
-mat = do_matrix(fig3, LR_COV)
-plt.ylabel("Covariance", fontsize=FONTSIZE)
-fig.colorbar(mat, ax=fig3, ticks=TICKS, orientation="horizontal")
-
-fig4 = plt.subplot(3, 2, 4)
-mat = do_matrix(fig4, HR_COV)
-# fig.colorbar(mat, ax=fig4, ticks=TICKS)
-
-fig5 = plt.subplot(3, 2, 5)
-mat = do_matrix(fig5, LR_COSP)
-# fig.colorbar(mat, ax=fig5, ticks=TICKS)
-plt.ylabel("Cospectrum", fontsize=FONTSIZE)
-plt.xlabel("Low Recallers", fontsize=FONTSIZE)
-
-fig6 = plt.subplot(3, 2, 6)
-mat = do_matrix(fig6, HR_COSP)
-# fig.colorbar(mat, ax=fig6, ticks=TICKS)
-plt.xlabel("High Recallers", fontsize=FONTSIZE)
+fig.colorbar(mat, ax=ax6, ticks=TICKS, orientation="vertical")
 
 plt.tight_layout(pad=1)
 save_name = str(FIG_PATH / "Figure_1.png")
