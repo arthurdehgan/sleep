@@ -1,7 +1,7 @@
 """Functions used to compute and analyse EEG/MEG data with pyriemann."""
 import time
 import functools
-from itertools import permutations
+from itertools import permutations, product
 from sklearn.base import clone, BaseEstimator
 from sklearn.model_selection import LeavePGroupsOut
 from sklearn.metrics import accuracy_score, roc_auc_score
@@ -269,7 +269,13 @@ def rm_outliers(data, rm_outl=2):
 
 
 def prepare_data(
-    data, labels=None, rm_outl=None, key="data", n_trials=None, random_state=0
+    data,
+    labels=None,
+    rm_outl=None,
+    key="data",
+    n_trials=None,
+    random_state=0,
+    zscore=False,
 ):
     final_data = None
     if rm_outl is not None:
@@ -288,7 +294,7 @@ def prepare_data(
 
         labels = np.asarray([[lab] * n_trials for lab in labels])
     elif labels is not None:
-        labels = np.asarray([labels[i] * size for i, size in enumerate(sizes)])
+        labels = np.asarray([[labels[i]] * size for i, size in enumerate(sizes)])
     else:
         raise Exception(
             "Error: either specify a number of trials and the "
@@ -306,6 +312,9 @@ def prepare_data(
             prep_submat = submat[index]
         else:
             prep_submat = submat
+
+        if zscore:
+            prep_submat = zscore(prep_submat)
 
         final_data = (
             prep_submat
@@ -516,51 +525,66 @@ def is_signif(pvalue, p=0.05):
 
 class StratifiedShuffleGroupSplit(BaseEstimator):
     def __init__(self, n_groups, n_iter=None):
-        if n_groups % 2 != 0:
-            raise Exception("Error: We need n_groups to be an even number")
-        n_each = int(n_groups / 2)
-        self.cv1 = LeavePGroupsOut(n_each)
-        self.cv2 = LeavePGroupsOut(n_each)
         self.n_groups = n_groups
         self.n_iter = n_iter
         self.counter = 0
+        self.labels_list = []
+        self.n_each = None
+        self.n_labs = None
+        self.labels_list = None
+        self.lpgos = None
+        self.indexes = None
 
-    def split(self, X, y, groups):
-        labels_list = list(set(y))
-        if len(labels_list) != 2:
-            raise Exception("Error: this cross-val only works for binary problems")
-        if groups is None:
-            raise Exception("Error: this function requires a groups parameter")
-        y = np.asarray(y)
-        groups = np.asarray(groups)
-        index1 = np.where(y == labels_list[0])[0]
-        index2 = np.where(y == labels_list[-1])[0]
-        labels1 = y[index1]
-        labels2 = y[index2]
-        groups1 = groups[index1]
-        groups2 = groups[index2]
-        for train1, test1 in self.cv1.split(index1, labels1, groups1):
-            for train2, test2 in self.cv2.split(index2, labels2, groups2):
-                if self.counter == self.n_iter:
-                    break
-                self.counter += 1
-                yield np.concatenate((index1[train1], index2[train2])), np.concatenate(
-                    (index1[test1], index2[test2])
-                )
-
-    def get_n_splits(self, X, y, groups):
-        if self.n_iter is not None:
-            return self.n_iter
+    def _init_atributes(self, y, groups):
+        if len(y) != len(groups):
+            raise Exception("Error: y and groups need to have the same length")
         if y is None:
             raise Exception("Error: y cannot be None")
         if groups is None:
-            raise Exception("Error: groups cannot be None")
-        if len(y) != len(groups):
-            raise Exception("Error: y and groups need to have the same length")
-        labels_list = list(set(y))
+            raise Exception("Error: this function requires a groups parameter")
+        if self.labels_list is None:
+            self.labels_list = list(set(y))
+        if self.n_labs is None:
+            self.n_labs = len(self.labels_list)
+        assert (
+            self.n_groups % self.n_labs == 0
+        ), "Error: The number of groups to leave out must be a multiple of the number of classes"
+        if self.n_each is None:
+            self.n_each = int(self.n_groups / self.n_labs)
+        if self.lpgos is None:
+            lpgos, indexes = [], []
+            for label in self.labels_list:
+                index = np.where(y == label)[0]
+                indexes.append(index)
+                lpgos.append(LeavePGroupsOut(self.n_each))
+            self.lpgos = lpgos
+            self.indexes = np.array(indexes)
+
+    def split(self, X, y, groups):
+        self._init_atributes(y, groups)
         y = np.asarray(y)
-        index1 = np.where(y == labels_list[0])[0]
-        index2 = np.where(y == labels_list[-1])[0]
-        return self.cv1.get_n_splits(
-            None, None, groups[index1]
-        ) * self.cv2.get_n_splits(None, None, groups[index2])
+        groups = np.asarray(groups)
+        iterators = []
+        for lpgo, index in zip(self.lpgos, self.indexes):
+            iterators.append(lpgo.split(index, y[index], groups[index]))
+        for ite in product(*iterators):
+            if self.counter == self.n_iter:
+                break
+            self.counter += 1
+            train_idx = np.concatenate(
+                [index[it[0]] for it, index in zip(ite, self.indexes)]
+            )
+            test_idx = np.concatenate(
+                [index[it[1]] for it, index in zip(ite, self.indexes)]
+            )
+            yield train_idx, test_idx
+
+    def get_n_splits(self, X, y, groups):
+        self._init_atributes(y, groups)
+        if self.n_iter is not None:
+            return self.n_iter
+        groups = np.asarray(groups)
+        n = 1
+        for index, lpgo in zip(self.indexes, self.lpgos):
+            n *= lpgo.get_n_splits(None, None, groups[index])
+        return n
