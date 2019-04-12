@@ -62,7 +62,7 @@ def cross_val_scores(estimator, cv, X, y, groups=None, n_jobs=1):
     To use instead of sklearn cross_val_score if you want both roc_auc and
     acc in one go."""
     clf = clone(estimator)
-    crossv = clone(cv)
+    crossv = clone(cv, safe=False)
     results = Parallel(n_jobs=n_jobs)(
         delayed(_cross_val)(train_index, test_index, clf, X, y)
         for train_index, test_index in crossv.split(X=X, y=y, groups=groups)
