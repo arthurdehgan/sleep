@@ -1,4 +1,7 @@
 """Functions used to compute and analyse EEG/MEG data with pyriemann."""
+print(
+    "Warning, this package is no longer updated, there might be bugs here and there even if they were not reported to me. Please use the new version at https://github.com/arthurdehgan/NeuroPy-MLToolbox."
+)
 import time
 import functools
 from itertools import permutations, product

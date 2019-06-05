@@ -1,6 +1,10 @@
 """Function do perform ttest indep with permutations
 
 Author: Arthur Dehgan"""
+print(
+    "Warning, this package is no longer updated, there might be bugs here and there even if they were not reported to me. Please use the new version at https://github.com/arthurdehgan/NeuroPy-MLToolbox."
+)
+import time
 import numpy as np
 from scipy.stats import ttest_ind
 from scipy.special import comb
